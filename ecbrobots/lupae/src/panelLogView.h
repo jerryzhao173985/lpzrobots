@@ -40,7 +40,7 @@
 #ifndef QPANELLOGVIEW_H_
 #define QPANELLOGVIEW_H_
 
-#include <QtGui>
+#include <QtWidgets>
 #include <QWidget>
 #include "types.h"
 

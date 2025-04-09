@@ -52,7 +52,7 @@ namespace lpzrobots {
     QHBoxLayout *l = new QHBoxLayout();
     l->addWidget(w);
     l->addWidget(scrollBar);
-    l->setMargin(0);
+    l->setContentsMargins(0, 0, 0, 0);
     setLayout(l);
 
     setPalette(QPalette(QColor(220, 220, 240)));

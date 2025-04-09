@@ -149,7 +149,7 @@
  ***************************************************************************/
 
 #include "QDNSDeviceWidget.h"
-#include <QtGui>
+#include <QtWidgets>
 #include "QCommunicationChannel.h"
 
 using namespace std;

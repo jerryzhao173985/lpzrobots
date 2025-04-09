@@ -68,12 +68,12 @@
 #ifndef __QMESSAGEDISPATCHWINDOW_H
 #define __QMESSAGEDISPATCHWINDOW_H
 
-#include <QtGui>
+#include <QtWidgets>
 #include <QMainWindow>
 #include <QTextEdit>
 #include <QTimer>
-#include <QStyleOptionProgressBarV2>
-#include <qdom.h>
+#include <QStyleOption>
+#include <QtXml/QDomDocument>
 #include "types.h"
 #include "QLogViewWidget.h"
 #include "QECBMessageDispatchServer.h"

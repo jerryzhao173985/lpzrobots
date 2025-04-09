@@ -22,12 +22,12 @@ bool Gnuplot::open(const QString& gnuplotcmd, int w,int h, int x, int y){
 //  setlocale(LC_NUMERIC,"en_US"); // set us type output
 #if defined(WIN32) || defined(_WIN32) || defined (__WIN32) || defined(__WIN32__) \
         || defined (_WIN64) || defined(__CYGWIN__) || defined(__MINGW32__)
-  sprintf(cmd, "%s", gnuplotcmd.latin1());
+  sprintf(cmd, "%s", gnuplotcmd.toLatin1().data());
 #else
   if(x==-1 || y==-1)
-    sprintf(cmd, "%s -geometry %ix%i -noraise >/dev/null 2>/dev/null", gnuplotcmd.latin1(), w, h);
+    sprintf(cmd, "%s -geometry %ix%i -noraise >/dev/null 2>/dev/null", gnuplotcmd.toLatin1().data(), w, h);
   else
-    sprintf(cmd, "%s -geometry %ix%i+%i+%i -noraise >/dev/null 2>/dev/null", gnuplotcmd.latin1(), w, h, x, y);
+    sprintf(cmd, "%s -geometry %ix%i+%i+%i -noraise >/dev/null 2>/dev/null", gnuplotcmd.toLatin1().data(), w, h, x, y);
 #endif
   pipe=popen(cmd,"w");
 
@@ -48,7 +48,7 @@ void Gnuplot::close(){
 /** send arbitrary command to gnuplot.
     like "set zeroaxis" or other stuff */
 void Gnuplot::command(const QString& cmd){
-  fprintf(pipe,"%s\n",cmd.latin1());
+  fprintf(pipe,"%s\n",cmd.toLatin1().data());
   fflush(pipe);
 };
 
@@ -64,37 +64,37 @@ void plotDataSet(FILE* f, const ChannelVals& vals){
 
 /** make gnuplot plot selected content of data buffers */
 QString Gnuplot::plotCmd(const QString& file, int start, int end){
-  const QLinkedList<int>& vc = plotInfo->getVisibleChannels();
-  if(vc.size()==0) return QString();  
-  QStringList buffer;  
+  const std::list<int>& vc = plotInfo->getVisibleChannels();
+  if(vc.size()==0) return QString();
+  QStringList buffer;
   bool first=true;
-  const ChannelData& cd = plotInfo->getChannelData();  
+  const ChannelData& cd = plotInfo->getChannelData();
   QString range;
   if(start!=-1 && end!=-1){
-    range=QString(" every ::%1::%2 ").arg(start).arg(end); 
+    range=QString(" every ::%1::%2 ").arg(start).arg(end);
   }
-  
-  FOREACHC(QLinkedList<int>, vc, i){    
+
+  FOREACHC(std::list<int>, vc, i){
     if(first){
-      buffer << "plot '" << (file.isEmpty() ? "-" : file)  << "' ";    
+      buffer << "plot '" << (file.isEmpty() ? "-" : file)  << "' ";
       first=false;
     } else {
       buffer << ", '' ";
     }
     buffer << range;
     if(!file.isEmpty()){
-      if(plotInfo->getUseReference1()){    
+      if(plotInfo->getUseReference1()){
         buffer << QString(" u %1:%2 ").arg(plotInfo->getReference1()+1).arg(*i+1);
       }else{
         // TODO add reference2!
         buffer << QString(" u %1 ").arg(*i+1);
       }
     }
-    buffer << "t '" << cd.getInfos()[*i].name << "'";        
-    if(!plotInfo->getChannelInfos()[*i].style != PS_DEFAULT) 
-      buffer << " w " << plotInfo->getChannelInfos()[*i].getStyleString();    
+    buffer << "t '" << cd.getInfos()[*i].name << "'";
+    if(!plotInfo->getChannelInfos()[*i].style != PS_DEFAULT)
+      buffer << " w " << plotInfo->getChannelInfos()[*i].getStyleString();
   }
-  return buffer.join(QString());  
+  return buffer.join(QString());
 }
 
 
@@ -107,15 +107,15 @@ void Gnuplot::plot(){
   // todo: use reference2 and plot3d?
 
   const ChannelData& cd      = plotInfo->getChannelData();
-  const QLinkedList<int>& vc = plotInfo->getVisibleChannels();
+  const std::list<int>& vc = plotInfo->getVisibleChannels();
   // FILE* pipe = stderr; // test
   if(vc.size()==0) return;
-  fprintf(pipe, "%s\n", plotCmd().latin1());    
-  
-  if(plotInfo->getUseReference1()){    
-    QLinkedList<int> visibles(vc);
-    visibles.push_front(plotInfo->getReference1());        
-    const QVector<ChannelVals>& vals = cd.getHistory(visibles, 0); // full history    
+  fprintf(pipe, "%s\n", plotCmd().toLatin1().data());
+
+  if(plotInfo->getUseReference1()){
+    std::list<int> visibles(vc);
+    visibles.push_front(plotInfo->getReference1());
+    const QVector<ChannelVals>& vals = cd.getHistory(visibles, 0); // full history
     int len = visibles.size();
     for(int k=1; k< len; k++){
       FOREACHC(QVector<ChannelVals>, vals, v){
@@ -124,7 +124,7 @@ void Gnuplot::plot(){
       fprintf(pipe,"e\n");
     }
   } else {
-    const QVector<ChannelVals>& vals = cd.getHistory(vc, 0); // full history    
+    const QVector<ChannelVals>& vals = cd.getHistory(vc, 0); // full history
     int len = vc.size();
     for(int k=0; k< len; k++){
       FOREACHC(QVector<ChannelVals>, vals, v){
@@ -134,4 +134,4 @@ void Gnuplot::plot(){
     }
   }
   fflush(pipe);
-};    
+};

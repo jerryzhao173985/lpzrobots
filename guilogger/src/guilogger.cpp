@@ -27,12 +27,12 @@
 #include "stl_adds.h"
 
 #include <utility>
-#include <qthread.h>
-#include <qapplication.h>
-#include <qmenubar.h>
-#include <qtimer.h>
-#include <qregexp.h>
-#include <qscrollarea.h>
+#include <QThread>
+#include <QApplication>
+#include <QMenuBar>
+#include <QTimer>
+#include <QRegExp>
+#include <QScrollArea>
 
 #include "quickmp.h"
 
@@ -70,8 +70,8 @@ GuiLogger::GuiLogger(const CommLineParser& configobj, const QRect& screenSize)
 
   sv = new QScrollArea(centralWidget());
   channelandsliderlayout->addWidget(sv);
-  //    sv = new Q3ScrollView(centralWidget());
-  // sv->setResizePolicy(Q3ScrollView::AutoOneFit);
+  //    sv = new QScrollArea(centralWidget());
+  // sv->setWidgetResizable(true);
   //    channelWidget = new QWidget(sv->viewport());
   //  channelWidget = new QWidget(channelandslider);
 
@@ -109,7 +109,7 @@ GuiLogger::GuiLogger(const CommLineParser& configobj, const QRect& screenSize)
 
   //  channelandsliderlayout->addWidget(channelWidget);
 
-  // sv->setSizePolicy(QSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred,2,0, FALSE));
+  // sv->setSizePolicy(QSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred));
   channelWidget->setSizePolicy(QSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred));
 
   commWidget = new QWidget(centralWidget());
@@ -338,17 +338,19 @@ void GuiLogger::save(bool blank){
 
   cfgFile.setFilename("guilogger.cfg");
 
-  section = cfgFile.sections.first();  // delete all "window" sections, because they will be rewritten in the next "for loop".
-  while(section)     {
+  // delete all "window" sections, because they will be rewritten in the next "for loop".
+  int i = 0;
+  while(i < cfgFile.sections.size()) {
+    section = cfgFile.sections.at(i);
     if(section->getName() == "Window") {
-      cfgFile.sections.remove();  // remove current item, iterator++
-      section = cfgFile.sections.current();
+      delete section;
+      cfgFile.sections.removeAt(i);  // remove current item
     } else if(blank && (section->getName() == "General" || section->getName() == "GNUPlot" ||
                    section->getName() == "Misc")) {
-      cfgFile.sections.remove();  // remove current item, iterator++
-      section = cfgFile.sections.current();
+      delete section;
+      cfgFile.sections.removeAt(i);  // remove current item
     } else {
-      section = cfgFile.sections.next();
+      i++;
     }
   }
 
@@ -417,7 +419,7 @@ void GuiLogger::save(bool blank){
       }else{
         sec->addValue("Position", "-1 -1"," # set to any coordinate to place a window by hand, (-1 -1) means automatic. If calcPositions then this is ignored");
       }
-      FOREACHC(QLinkedList<int>, plotInfos[i]->getVisibleChannels(), c){
+      FOREACHC(std::list<int>, plotInfos[i]->getVisibleChannels(), c){
         sec->addValue("Channel", channelData.getChannelName(*c));
         // todo maybe add style as well
       }
@@ -470,10 +472,10 @@ void GuiLogger::load() {
   }
 
   // load window settings
-  for(section = cfgFile.sections.first(); section != 0; section = cfgFile.sections.next()) {
+  foreach(IniSection* section, cfgFile.sections) {
     if(section->getName() == "Window"){
       pwin=0;
-      for(var = section->vars.first(); var!=0; var = section->vars.next())
+      foreach(IniVar* var, section->vars)
         {   qv = var->getValue();
           if(var->getName() == "Number") {
             pwin = qv.toInt();
@@ -491,11 +493,11 @@ void GuiLogger::load() {
             plotInfos[pwin]->setChannelShow(qv,true);
           } else if(var->getName() == "Size") {
             int x,y;
-            if(sscanf(qv.latin1(),"%ix%i",&x,&y)==2)
+            if(sscanf(qv.toLatin1().data(),"%ix%i",&x,&y)==2)
               windowsize.insert(pwin, QSize(x,y));
           } else if(var->getName() == "Position") {
             int w,h;
-            if(sscanf(qv.latin1(),"%i %i",&w,&h)==2)
+            if(sscanf(qv.toLatin1().data(),"%i %i",&w,&h)==2)
               windowposition.insert(pwin, QSize(w,h));
           }
         }
@@ -555,11 +557,11 @@ void GuiLogger::load() {
   if(cfgFile.getSection(GNUplotsection,"GNUPlot",false)){
     IniVar* var;
     QString qv;
-    for(var = GNUplotsection.vars.first(); var!=0; var = GNUplotsection.vars.next()) {
+    foreach(IniVar* var, GNUplotsection.vars) {
       qv = var->getValue();
       if(var->getName() == "Command")
         for(int k=0; k<plotwindows; k++)
-          plotWindows[k].command(qv.latin1());
+          plotWindows[k].command(qv.toLatin1().data());
     }
   }
 

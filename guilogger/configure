@@ -1,8 +1,14 @@
 #!/bin/sh
 
 SPEC=
-if [ `uname -s` = "Darwin" ]; then 
+if [ `uname -s` = "Darwin" ]; then
     SPEC=-spec macx-g++
 fi
 
-qmake -makefile $SPEC guilogger.pro
+# Try to find qmake for Qt5 first, then fall back to qmake
+QMAKE=qmake-qt5
+if ! which $QMAKE > /dev/null 2>&1; then
+    QMAKE=qmake
+fi
+
+$QMAKE -makefile $SPEC guilogger.pro

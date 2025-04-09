@@ -1,5 +1,5 @@
 //#include <QApplication>
-#include <qapplication.h>
+#include <QApplication>
 #include "QECBRobotsWindow.h"
 #include "QMessageDispatchWindow.h"
 #include "QECBCommunicator.h"

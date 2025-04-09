@@ -40,7 +40,7 @@
 #ifndef QAVRFUSEDIALOG_H_
 #define QAVRFUSEDIALOG_H_
 
-#include <QtGui>
+#include <QtWidgets>
 #include <QWidget>
 #include "avrDeviceList.h"
 #include "types.h"

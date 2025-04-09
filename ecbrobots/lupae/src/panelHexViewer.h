@@ -39,7 +39,7 @@
 
 #ifndef PGMVIEWER_H_
 #define PGMVIEWER_H_
-#include <QtGui>
+#include <QtWidgets>
 #include <QWidget>
 #include "types.h"
 

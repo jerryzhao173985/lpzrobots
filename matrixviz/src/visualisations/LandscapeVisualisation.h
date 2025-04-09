@@ -28,7 +28,7 @@
 #include "AbstractVisualisation.h"
 //#include <GL/glut.h>
 
-#include <qgl.h>
+#include <QGLWidget>
 
 struct VERTEX {
     GLfloat x,y,z;

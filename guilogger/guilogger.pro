@@ -1,10 +1,10 @@
 SUBDIRS += src
-TEMPLATE = subdirs 
-QT += qt3support
+TEMPLATE = subdirs
+QT += core gui widgets
 CONFIG += warn_on \
           qt \
           thread \
-          console 
+          console
 
 #CONFIG += debug
 

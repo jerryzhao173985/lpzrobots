@@ -40,12 +40,12 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
-#include <QtGui>
+#include <QtWidgets>
 #include <QMainWindow>
 #include <QTextEdit>
 #include <QTimer>
-#include <QStyleOptionProgressBarV2>
-#include <qdom.h>
+#include <QStyleOption>
+#include <QtXml/QDomDocument>
 #include "types.h"
 #include "QExtAction.h"
 #include "panelHexViewer.h"

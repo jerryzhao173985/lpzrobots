@@ -26,8 +26,8 @@
 
 #include <signal.h>
 
-#include <qapplication.h>
-#include <qdesktopwidget.h>
+#include <QApplication>
+#include <QDesktopWidget>
 #include "guilogger.h"
 #include "filelogger.h"
 #include "qserialreader.h"
@@ -43,8 +43,8 @@ void control_c(int ){ }
 
 
 /**
- * We need to catch Ctrl-C (SIGINT) because if we are called from another program (like ode simulation) that reacts on Ctrl-C we are killed. 
- * SIGPIPE is emitted if the stdin or stdout breaks. 
+ * We need to catch Ctrl-C (SIGINT) because if we are called from another program (like ode simulation) that reacts on Ctrl-C we are killed.
+ * SIGPIPE is emitted if the stdin or stdout breaks.
  * We need to terminate if the stdin breaks to get closed with the calling application (in  pipe mode).
 */
 void signal_handler_init(){
@@ -72,12 +72,12 @@ void printUsage(){
   * \brief Main Programm
   * \author Dominic Schneider
   */
-int main( int argc, char ** argv ) {   
+int main( int argc, char ** argv ) {
    signal_handler_init();
    CommLineParser params;
    params.parseCommandLine(argc, argv);
 
-   if(params.getHelp()) {  
+   if(params.getHelp()) {
      printUsage();
      return 1;
    }
@@ -98,14 +98,14 @@ int main( int argc, char ** argv ) {
     GuiLogger *gl = new GuiLogger(params, screenRect);
     ChannelData* cd = &gl->getChannelData();
 
-    if(params.getMode()=="serial")    
+    if(params.getMode()=="serial")
     {   QSerialReader *qserial = new QSerialReader();
         if(params.getPort() != "") qserial->setComPort(params.getPort());
-        printf("Guilogger: Using serial port %s as source.\n", qserial->getComPort().latin1());
+        printf("Guilogger: Using serial port %s as source.\n", qserial->getComPort().toLatin1().data());
         qsource = qserial;
         a.connect(qsource, SIGNAL(newData(QString)), cd, SLOT(receiveRawData(QString)));
         qsource->start();
-    }else if(params.getMode()=="pipe") {  
+    }else if(params.getMode()=="pipe") {
       QPipeReader *qpipe = new QPipeReader();
       //        if(params.getDelay() >= 0) qpipe->setDelay(params.getDelay());
       //        printf("Using pipe input with delay %i.\n", qpipe->getDelay());
@@ -113,15 +113,15 @@ int main( int argc, char ** argv ) {
       qsource = qpipe;
       a.connect(qsource, SIGNAL(newData(QString)), cd, SLOT(receiveRawData(QString)));
       qsource->start();
-    }else if(params.getMode()=="fpipe") {  
-      FILE* f = fopen(params.getFile(),"r");
+    }else if(params.getMode()=="fpipe") {
+      FILE* f = fopen(params.getFile().toLatin1().data(),"r");
       QPipeReader *qpipe = new QPipeReader(0,f);
       if(params.getDelay() >= 0) qpipe->setDelay(params.getDelay());
       printf("Guilogger: Using file-pipe input\n");
       qsource = qpipe;
       a.connect(qsource, SIGNAL(newData(QString)), cd, SLOT(receiveRawData(QString)));
       qsource->start();
-    } else if(params.getMode()=="file") {  
+    } else if(params.getMode()=="file") {
       // will be connected within guilogger class
       // printf("Sorry, there are no native segfaults any more.\n");
 //        printf("But nevertheless I further provide segfaults for convenience by using free(0)\n");
@@ -130,18 +130,18 @@ int main( int argc, char ** argv ) {
       printUsage();
       return 1;
     }
-   
+
 
     FileLogger fl;
-    if(params.getLogg()) 
-    {   fl.setLogging(TRUE);
+    if(params.getLogg())
+    {   fl.setLogging(true);
         printf("Guilogger: Logging is on\n");
         a.connect(qsource, SIGNAL(newData(QString)), &fl, SLOT(writeChannelData(QString)));  // the filelogger is listening
     }
 
 //    if(params.getMode() != "file") qsource->start();
 
-    gl->setCaption( "GUI Logger" );
+    gl->setWindowTitle( "GUI Logger" );
     gl->show();
     a.connect( gl, SIGNAL(quit()), &a, SLOT(quit()) );
     a.connect( &a, SIGNAL(lastWindowClosed()), &a, SLOT(quit()) );

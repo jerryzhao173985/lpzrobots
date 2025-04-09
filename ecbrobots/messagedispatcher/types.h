@@ -7,7 +7,7 @@
 
 #ifndef TYPES_H_
 #define TYPES_H_
-#include <QtGui>
+#include <QtWidgets>
 
 typedef unsigned char QByte;
 typedef unsigned short QWord;

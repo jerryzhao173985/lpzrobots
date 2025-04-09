@@ -26,22 +26,25 @@
 #include "inifile.h"
 #include <iostream>
 using namespace std;
-#include <qregexp.h>
+#include <QRegExp>
 
 
 IniFile::IniFile(){
-  sections.setAutoDelete(true);
+  // Qt5: No need for setAutoDelete, using qDeleteAll
   bloaded=false;
 }
 
 IniFile::IniFile(QString _filename){
-  sections.setAutoDelete(true);
+  // Qt5: No need for setAutoDelete, using qDeleteAll
   bloaded=false;
   setFilename(_filename);
 }
 
 
 IniFile::~IniFile(){
+  // Delete all sections
+  qDeleteAll(sections);
+  sections.clear();
 }
 
 void IniFile::setFilename(QString _filename){
@@ -63,10 +66,10 @@ bool IniFile::Load(){
   int LineType;
   QString str1,str2,str3;
 
-  file.setName(filename);
+  file.setFileName(filename);
   if (!file.exists()){
 #ifdef DEBUG
-    cerr << "\nFile doesn't exist: " << filename.latin1();
+    cerr << "\nFile doesn't exist: " << filename.toLatin1().data();
 #else
 
 #endif
@@ -74,13 +77,13 @@ bool IniFile::Load(){
   }
   if (!file.open( QIODevice::ReadOnly)) {
 #ifdef DEBUG
-    cerr << "\nCannot read File: " << filename.latin1();
+    cerr << "\nCannot read File: " << filename.toLatin1().data();
 #else
 
 #endif
     return false;
   }
-  // Zeile für Zeile auslesen und zuordnen
+  // Zeile fï¿½r Zeile auslesen und zuordnen
   while( (file.readLine(buffer,1024))>0 ){
     line=QString(buffer);
     str1="";
@@ -126,7 +129,7 @@ int IniFile::getLineType( QString _line, QString &str1, QString &str2, QString &
 
   if (_line.isEmpty()|| _line=="\n") return EMPTY;
 
-  if (_line.find(QRegExp("^[;#]"),0)!=-1){
+  if (_line.indexOf(QRegExp("^[;#]"),0)!=-1){
     str1=_line;
     return COMMENT;
   }
@@ -147,7 +150,7 @@ int IniFile::getLineType( QString _line, QString &str1, QString &str2, QString &
     str1=_line.left(len-1);
     int start2=len;
 
-    
+
     regexp.setPattern(".+[;#]");
     start=regexp.indexIn( _line, start2);
     len=regexp.matchedLength();
@@ -162,17 +165,17 @@ int IniFile::getLineType( QString _line, QString &str1, QString &str2, QString &
 
   // kann sich nur um eine alleinstehende Variable handeln
   str1=_line;
-  
+
   return VAR;
 }
 
 
 bool IniFile::Save(){
   if (filename.isEmpty()) return false;
-  file.setName(filename);
+  file.setFileName(filename);
   if (! file.open(QIODevice::WriteOnly)){
 #ifdef DEBUG
-    cerr << "\nCannot write File: " << filename.latin1();
+    cerr << "\nCannot write File: " << filename.toLatin1().data();
 #else
 
 #endif
@@ -184,18 +187,18 @@ bool IniFile::Save(){
   QString line;
 
   // Durchgehen und alles reinschreiben
-  file.writeBlock(comment.latin1(),comment.length());
-  for(section=sections.first();section!=0;section=sections.next()){
+  file.write(comment.toLatin1(),comment.length());
+  foreach(IniSection* section, sections) {
     line="\n[";
     line.append(section->getName());
     line.append("]\n");
-    file.writeBlock(line.latin1(),line.length());
+    file.write(line.toLatin1(),line.length());
     line=section->getComment();
     if (!line.isEmpty()) {
       line += "\n";
-      file.writeBlock(line.latin1(),line.length());
+      file.write(line.toLatin1(),line.length());
     }
-    for(var=section->vars.first();var!=0;var=section->vars.next()){
+    foreach(IniVar* var, section->vars) {
       line=var->getName();
       if (! var->getValue().isEmpty()){
         line.append("=");
@@ -204,7 +207,7 @@ bool IniFile::Save(){
 //      }else{
         line.append("\n");
       }
-      file.writeBlock(line.latin1(),line.length());
+      file.write(line.toLatin1(),line.length());
     }
   }
 
@@ -224,22 +227,24 @@ void IniFile::Clear(){
 
 bool IniFile::getSection(IniSection& _section,QString _name,bool _next){
   static QString lastname;
-  IniSection* sec;
-  if (_next==false || (_next==true && _name!=lastname) ) {
-    lastname ="";
-    sec=sections.first();
+  static int currentIndex = 0;
 
-  }else{
-    sec=sections.next();
+  if (_next==false || (_next==true && _name!=lastname)) {
+    lastname ="";
+    currentIndex = 0;
+  } else {
+    currentIndex++;
   }
 
   lastname=_name;
 
-  for(;sec!=0;sec=sections.next()){
-      if (sec->getName()==_name){  // gefunden
-        sec->copy(_section);
-        return true;
-      }
+  for(int i = currentIndex; i < sections.size(); i++){
+    IniSection* sec = sections.at(i);
+    if (sec->getName()==_name){  // gefunden
+      sec->copy(_section);
+      currentIndex = i;
+      return true;
+    }
   }
   return false;
 }
@@ -253,7 +258,9 @@ IniSection *IniFile::addSection(QString name)
 
 
 void IniFile::delSection(IniSection* _section)
-{   sections.remove(_section);
+{
+  sections.removeOne(_section);
+  delete _section;
     _section = NULL;
 }
 
@@ -264,9 +271,9 @@ QString IniFile::getValueDef(QString _section, QString _var, QString _default){
     IniVar var;
     if(sec.getVar(var,_var)){
       return var.getValue();
-    } else 
+    } else
       return _default;
-  } else 
+  } else
     return _default;
 
 }
@@ -288,15 +295,18 @@ QString IniFile::getComment(){
 //SECTION
 
 IniSection::IniSection(){
-  vars.setAutoDelete(true);
+  // Qt5: No need for setAutoDelete, using qDeleteAll
 }
 
 IniSection::IniSection(QString _name){
-  vars.setAutoDelete(true);
+  // Qt5: No need for setAutoDelete, using qDeleteAll
   setName(_name);
 }
 
 IniSection::~IniSection(){
+  // Delete all vars
+  qDeleteAll(vars);
+  vars.clear();
 }
 
 void IniSection::setName(QString _name){
@@ -328,13 +338,13 @@ void IniSection::copy (IniSection& _section){
   _section.setName(name);
   _section.setComment(comment);
   _section.vars=vars; // Operator von Qt ueberladen
-  _section.vars.setAutoDelete(false);
+  // Qt5: No need for setAutoDelete, we'll handle memory manually
 }
 
 
 bool IniSection::getVar( IniVar& _var, QString _name){
   IniVar* tempvar;
-  for(tempvar=vars.first();tempvar;tempvar=vars.next()){
+  foreach(IniVar* tempvar, vars) {
     if (tempvar->getName()==_name){
       tempvar->copy(_var);
       return true;
@@ -345,7 +355,9 @@ bool IniSection::getVar( IniVar& _var, QString _name){
 
 
 void IniSection::delVar(IniVar* _var)
-{    vars.remove(_var);  // automatic deletion
+{
+  vars.removeOne(_var);
+  delete _var;  // manual deletion in Qt5
      _var = NULL;
 }
 

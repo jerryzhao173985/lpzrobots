@@ -28,7 +28,7 @@
 #include "AbstractVisualisation.h"
 
 
-#include <qgl.h> //"/usr/include/qt4/QtOpenGL/QGLWidget"
+#include <QGLWidget>
 
 class BarVisualisation : public AbstractVisualisation {
   Q_OBJECT

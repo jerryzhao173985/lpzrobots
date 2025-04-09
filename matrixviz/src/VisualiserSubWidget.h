@@ -26,7 +26,7 @@
 #ifndef __VISUALISATIONSUBWIDGET_H_
 #define __VISUALISATIONSUBWIDGET_H_
 
-#include <QtGui>
+#include <QtWidgets>
 //class AbstractPlotChannel;
 
 //#include "Channel/MatrixPlotChannel.h"

@@ -27,7 +27,7 @@
 #include "ListEntity.h"
 #include <math.h>
 #include <iostream>
-#include <QtGui>
+#include <QtWidgets>
 #include <QtXml/QDomDocument>
 #include <QtXml/QDomElement>
 #include <QFile>

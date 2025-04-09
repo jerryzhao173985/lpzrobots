@@ -27,7 +27,7 @@
 #define __COLORPALETTE_H_
 
 #include <QString>
-#include <QtGui>
+#include <QtWidgets>
 #include <QSize>
 #include <QVector>
 #include "MatrixPlotChannel.h"

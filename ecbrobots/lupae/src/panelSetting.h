@@ -40,7 +40,7 @@
 #ifndef QPANELSETTING_H_
 #define QPANELSETTING_H_
 
-#include <QtGui>
+#include <QtWidgets>
 #include <QWidget>
 #include "avrDeviceList.h"
 #include "constants.h"

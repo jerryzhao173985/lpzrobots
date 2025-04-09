@@ -51,7 +51,7 @@
 #ifndef __QGRIDPOS_H_
 #define __QGRIDPOS_H_
 
-#include <qpoint.h>
+#include <QPoint>
 
 namespace lpzrobots {
   

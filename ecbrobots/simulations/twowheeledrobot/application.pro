@@ -4,7 +4,7 @@ TARGET = start
 DEPENDPATH += . ../.. ../../../selforg/include ../../messagedispatcher ../../qconfigurable
 INCLUDEPATH += /$(HOME)/include ../.. ../../../selforg/include  ../../messagedispatcher ../../qconfigurable
 LIBS += -L$(HOME)/lib  -lusb -lftdi -lselforg_dbg -L../../../selforg
-CONFIG += debug 
+CONFIG += debug
 QMAKE_CXXFLAGS += -Wno-deprecated -Wno-unused-parameter
 
 OBJECTS_DIR = obj
@@ -12,7 +12,7 @@ MOC_DIR = moc
 
 
 #Qt used libraries/functionalities
-QT = core gui xml
+QT += core gui widgets xml
 
 # Input - Header
 

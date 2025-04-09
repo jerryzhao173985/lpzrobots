@@ -1,6 +1,6 @@
-#!/bin/sh 
+#!/bin/sh
 ## File:     configure of configurator
-## Author:   Georg Martius 
+## Author:   Georg Martius
 ## Date:     Oct 2011
 
 usage="\
@@ -58,5 +58,11 @@ if m4 -DPREFIX="$prefix" -D$system -DVERSION=$version $DIRNAME/$package-config.m
    echo "configuration done!"
 fi
 
-cd $DIRNAME/ && qmake $QMAKEOPT configurator.pro
+# Try to find qmake for Qt5 first, then fall back to qmake
+QMAKE=qmake-qt5
+if ! which $QMAKE > /dev/null 2>&1; then
+    QMAKE=qmake
+fi
+
+cd $DIRNAME/ && $QMAKE $QMAKEOPT configurator.pro
 

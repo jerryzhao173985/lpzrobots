@@ -140,8 +140,8 @@
  ***************************************************************************/
 
 #include "QConfigurableWidget.h"
-#include <QtGui>
-#include <QtXml>
+#include <QtWidgets>
+#include <QtXml/QtXml>
 #include <QFile>
 
 #include "QBoolConfigurableTileWidget.h"
@@ -154,7 +154,7 @@
 using namespace std;
 
 namespace lpzrobots {
-  
+
   QConfigurableWidget::QConfigurableWidget(Configurable* config, int nameIndex) :
     config(config), dragging(false), isCollapsed(false), configurableTile_dragging(0), nameIndex(nameIndex),
         numberOfTilesPerRow(3), numberOfVisibleTiles(0) {

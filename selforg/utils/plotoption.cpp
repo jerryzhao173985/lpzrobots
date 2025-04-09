@@ -29,7 +29,7 @@
 #include <assert.h>
 #include <string.h>
 #include <stdlib.h>
-#include <quickmp.h>
+#include "quickmp.h"
 #include <selforg/stl_adds.h>
 #include <selforg/inspectable.h>
 

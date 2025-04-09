@@ -28,7 +28,7 @@
 #define ABSTRACT_ROBOT_GUI_H
 
 
-#include <QtGui>
+#include <QtWidgets>
 
 
 

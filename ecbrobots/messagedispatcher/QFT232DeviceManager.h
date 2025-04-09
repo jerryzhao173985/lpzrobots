@@ -61,7 +61,7 @@
 #ifndef QFT232DEVICEMANAGER_H_
 #define QFT232DEVICEMANAGER_H_
 
-#include <QtGui>
+#include <QtWidgets>
 #include <QThread>
 #include <QString>
 #include <ftdi.h>

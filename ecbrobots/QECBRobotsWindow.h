@@ -131,12 +131,12 @@
 #ifndef __QECBROBOTSWINDOW_H
 #define __QECBROBOTSWINDOW_H
 
-#include <QtGui>
+#include <QtWidgets>
 #include <QMainWindow>
 #include <QTextEdit>
 #include <QTimer>
-#include <QStyleOptionProgressBarV2>
-#include <qdom.h>
+#include <QStyleOptionProgressBar>
+#include <QDomDocument>
 #include "QExtAction.h"
 #include <QHash>
 

@@ -31,7 +31,7 @@ class AbstractPlotChannel;
 #include "MatrixPlotChannel.h"
 #include "VectorPlotChannel.h"
 #include "ColorPalette.h"
-#include <qgl.h>
+#include <QGLWidget>
 
 #include <iostream>
 

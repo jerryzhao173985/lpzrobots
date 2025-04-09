@@ -60,7 +60,7 @@ ListEntity::ListEntity(int i, QColor color, double pos, QWidget *parent)
   rem->setMinimumSize(20, 20);
 
   QHBoxLayout* hlayout = new QHBoxLayout();
-  //hlayout->setMargin(10);
+  //hlayout->setContentsMargins(10, 10, 10, 10);
   hlayout->addWidget(button);
   hlayout->addWidget(posEdit);
   hlayout->addWidget(add);
@@ -100,7 +100,7 @@ void ListEntity::changePos(double pos) { //SLOT
 
 void ListEntity::updateFromData() { //SLOT
   fillButton();
-  posEdit->setValue(pos);    
+  posEdit->setValue(pos);
 }
 
 

@@ -24,7 +24,7 @@
  ***************************************************************************/
 
 #include <QColor>
-#include <QtGui>
+#include <QtWidgets>
 
 #ifndef __LISTENTITY_H_
 #define __LISTENTITY_H_

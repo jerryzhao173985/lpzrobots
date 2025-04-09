@@ -30,8 +30,9 @@
 #ifndef COMMLINEPARSER_H
 #define COMMLINEPARSER_H
 
-#include <qlist.h>
-#include <qstring.h>
+#include <QList>
+#include <QString>
+#include <QMap>
 
 class CommLineParser
 {
@@ -50,10 +51,10 @@ public:
 
   CommLineParser()
   {
-    logg = FALSE;
-    help = FALSE;
+    logg = false;
+    help = false;
     delay = 100;
-    mpparse = FALSE;
+    mpparse = false;
     mode = "pipe";
   }
 
@@ -97,7 +98,7 @@ public:
         else if(argv[i][0] == '-' && argv[i+1] == 0 ) paramMap.insert(argv[i], "1");
       }
 
-    mpparse = TRUE;
+    mpparse = true;
     return paramMap;
   }
 

@@ -73,7 +73,7 @@ ScaleFunction::ScaleFunction(QWidget *parent): QWidget(parent), func(0), base(2)
   nEdit->hide();
 
   vlayout = new QVBoxLayout();
-  //hlayout->setMargin(10);
+  //hlayout->setContentsMargins(10, 10, 10, 10);
   vlayout->addWidget(funcBox);
   vlayout->addLayout(hlayout);
   vlayout->setContentsMargins(0,0,0,0);

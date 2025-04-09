@@ -79,7 +79,8 @@ void SimplePipeReader::run()
   }
 
   if(debug) std::cout << "SimplePipeReader SIGNAL(finished())" << std::endl;
-  emit(finished());
+  // emit finished() signal
+  QThread::quit();
 }
 
 bool SimplePipeReader::readyForData()
@@ -101,7 +102,7 @@ std::list<std::string> SimplePipeReader::getChannelLine()
   QStringList string_list = currentChannelLine.split ( ' ' );
   for ( int i = 0;i < string_list.size();i++ ) {
 
-      std::string s = ( ( string_list.at ( i ) ).toAscii() ).data();//toStdString;
+      std::string s = ( ( string_list.at ( i ) ).toLatin1() ).data();//toStdString;
 //    std::cout << "SimplePipeReader: getChannelLine[" << s << "]****************" << std::endl;
       tmp_list.push_back ( s );
     }
@@ -117,7 +118,7 @@ std::list<std::string> SimplePipeReader::getDescriptionLine()
   QStringList string_list = currentDescriptionLine.split ( ' ' );
   for ( int i = 0;i < string_list.size();i++ ) {
 
-    std::string s = ( ( string_list.at ( i ) ).toAscii() ).data();//toStdString;
+    std::string s = ( ( string_list.at ( i ) ).toLatin1() ).data();//toStdString;
 //     std::cout << "SimplePipeReader: getChannelLine[" << s << "]****************" << std::endl;
     if (s.size() > 0)
       tmp_list.push_back ( s );

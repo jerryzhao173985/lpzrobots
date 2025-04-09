@@ -26,7 +26,7 @@
 #ifndef __SCALEFUNCTION_H_
 #define __SCALEFUNCTION_H_
 
-#include <QtGui>
+#include <QtWidgets>
 #include <math.h>
 
 class ScaleFunction : public QWidget{

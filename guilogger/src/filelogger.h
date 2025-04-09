@@ -23,9 +23,9 @@
  *                                                                         *
  ***************************************************************************/
 
-#include <qdatetime.h>
-#include <qobject.h>
-#include <qstring.h>
+#include <QDateTime>
+#include <QObject>
+#include <QString>
 
 /** \brief Short class for logging char* strings to file named with date and time.
   * \author Dominic Schneider
@@ -39,7 +39,7 @@ public:
     ~FileLogger();
     void setPrefix(QString pf) {prefix = pf;};
     void setLogging(bool log)  {this->log = log;}
-    
+
 private:
     QString prefix;
     QString filename;

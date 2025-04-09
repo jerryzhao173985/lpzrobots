@@ -23,8 +23,8 @@
  *                                                                         *
  ***************************************************************************/
 #include "qdatasource.h"
-#include <qthread.h>
-#include <qstring.h>
+#include <QThread>
+#include <QString>
 
 /** \brief Class for reading complete lines from the serial port terminated by a special character
   * \author Dominic Schneider and someone unknowen who wrote the algorithm
@@ -34,7 +34,7 @@ class QSerialReader : public QDataSource
     Q_OBJECT
 
 private:
-    QString port;
+    QByteArray port;
     int baudrate;
     char blockterminator;  // end-of-line symbol for readed data
 
@@ -42,8 +42,8 @@ public:
     QSerialReader(char bt = '\n');
     virtual void run();
 
-    void setComPort(QString port){ this->port = port.latin1(); };   /// set com port
-    QString getComPort() {return port;};
+    void setComPort(QString port){ this->port = port.toLatin1(); };   /// set com port
+    QString getComPort() {return QString(port);};
     void setBaudrate(int baud){ baudrate = baud; };      /// set baud rate
 
 };

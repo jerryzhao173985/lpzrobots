@@ -1,9 +1,9 @@
-# Diese Datei wurde mit dem qmake-Manager von KDevelop erstellt. 
-# ------------------------------------------- 
+# Diese Datei wurde mit dem qmake-Manager von KDevelop erstellt.
+# -------------------------------------------
 # Unterverzeichnis relativ zum Projektverzeichnis: ./src
 # Das Target ist eine Anwendung:  ../bin/guilogger
 
-HEADERS += \ 
+HEADERS += \
            guilogger.h \
            gnuplot.h \
            filelogger.h \
@@ -30,7 +30,7 @@ SOURCES += \
            plotchannelstablemodel.cpp \
            plotinfo.cpp \
            channeldata.cpp
-           
+
 
 TEMPLATE = app
 CONFIG += debug \
@@ -40,5 +40,5 @@ qt \
 console
 TARGET = bin/guilogger
 target.path = /usr/bin
-QT += qt3support
+QT += core gui widgets
 INSTALLS += target

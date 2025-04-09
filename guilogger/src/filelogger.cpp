@@ -28,26 +28,26 @@
 
 FileLogger::FileLogger(QString pf)
 {   prefix = pf;
-    log= FALSE;
+    log= false;
     instream=0;
 }
 
 FileLogger::~FileLogger(){
   if(instream) {
     fclose(instream);
-  }  
+  }
 }
 
 
 void FileLogger::openStream()
-{  
+{
     filename = prefix + (QDateTime::currentDateTime()).toString("yyyy-MM-dd_hh-mm-ss") + ".log";
 
     if(instream) {
       fclose(instream);
     }
-    instream = fopen(filename.latin1(),"w+");
-    printf("Open Logfile: %s\n",filename.latin1());
+    instream = fopen(filename.toLatin1().data(),"w+");
+    printf("Open Logfile: %s\n",filename.toLatin1().data());
 }
 
 
@@ -56,9 +56,9 @@ void FileLogger::writeChannelData(QString datablock)
     if(!log) return;
 
     if(!instream)
-    {   
+    {
       openStream();
     }
     if(instream)
-      fprintf(instream, "%s", datablock.latin1());
+      fprintf(instream, "%s", datablock.toLatin1().data());
 }

@@ -35,30 +35,30 @@
 #define VERSIONSTRING QUOTEIT(0.6)
 #endif
 
-// this list could be shrinked
-#include <qmainwindow.h>
-#include <qmenu.h>
-#include <qstringlist.h>
-#include <qlabel.h>
-#include <qdialog.h>
-#include <qlinkedlist.h>
-#include <qlayout.h>
-#include <qstringlist.h>
-#include <qscrollarea.h>
-//#include <qtimer.h>
-#include <qmutex.h>
-#include <qmap.h>
-#include <qlist.h>
-#include <qboxlayout.h>
-#include <qlineedit.h>
-#include <qpushbutton.h>
-#include <qslider.h>
-#include <qtextedit.h>
+// Qt5 includes
+#include <QMainWindow>
+#include <QMenu>
+#include <QStringList>
+#include <QLabel>
+#include <QDialog>
+#include <QLinkedList>
+#include <QLayout>
+#include <QStringList>
+#include <QScrollArea>
+//#include <QTimer>
+#include <QMutex>
+#include <QMap>
+#include <QList>
+#include <QBoxLayout>
+#include <QLineEdit>
+#include <QPushButton>
+#include <QSlider>
+#include <QTextEdit>
 #include <QTableView>
 
 #include <list>
 #include "gnuplot.h"
-//#include <queue.h>
+//#include <QUeue>
 #include "inifile.h"
 #include "commlineparser.h"
 #include "plotchannelstablemodel.h"
@@ -87,7 +87,7 @@ private slots:
   void plotChannelsChanged(int window);
 
   void plotUpdate();
-  /** updates plots: 
+  /** updates plots:
       @param waitfordata if true then nothing is done unless new data was seen
       @param window which window to update. if -1 then all windows.
    */
@@ -112,8 +112,8 @@ private:
   int  analyzeFile();
 
 private:
-    
-  QLinkedList<QString> inputbuffer;
+
+  std::list<QString> inputbuffer;
 
   QBoxLayout* layout;
   QWidget* channelandslider;
@@ -121,11 +121,11 @@ private:
   QBoxLayout* channellayout;
   QBoxLayout* commlayout;
   QBoxLayout* sendlayout;
-  //    Q3ScrollView* sv;
+  // QScrollArea* sv; // Already defined below
   QScrollArea* sv;
-  QWidget* commWidget; 
+  QWidget* commWidget;
   QTableView* channelWidget;
-    
+
   QTextEdit   *parameterlistbox;
   QLineEdit   *paramvaluelineedit;
   QPushButton *sendbutton;
@@ -133,10 +133,10 @@ private:
   QSlider     *horizonslider;
   QLabel      *dataslidervalue;
   QLabel      *horizonslidervalue;
-    
+
   QMenu       *filemenu;
- 
-  
+
+
   QMap<int, QSize > windowsize;     // the window sizes from the cfg file are stored here
   QMap<int, QSize > windowposition; // the window positions from the cfg file are stored here
   QRect screenSize;                 // size of the screen for window positioning
@@ -144,13 +144,13 @@ private:
   int plotwindows;
   int lastPlotTime;
   int datadelayrate;  // how much data traffic is neccessary to replot
-  int filePlotHorizon; // 
+  int filePlotHorizon; //
 
   QString gnuplotcmd;
 
   QString mode;
   QString filename;
-    
+
   QTimer *plottimer;
   int startplottimer;
 
@@ -166,7 +166,7 @@ private:
   QVector<PlotInfo*> plotInfos;
   /// windows (e.g. gnuplot) to actually show the data
   PlotWindows plotWindows;
-  
+
   // Model
   PlotChannelsTableModel* tableModel;
 

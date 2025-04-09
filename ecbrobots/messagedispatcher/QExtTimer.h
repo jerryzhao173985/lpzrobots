@@ -42,7 +42,7 @@
 #ifndef __QEXTTIMER_H_
 #define __QEXTTIMER_H_
 
-#include <qtimer.h>
+#include <QTimer>
 
 namespace lpzrobots {
   

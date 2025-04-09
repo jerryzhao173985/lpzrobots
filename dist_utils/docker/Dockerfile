@@ -3,7 +3,7 @@ FROM ubuntu:latest
 RUN apt-get -y update && apt-get install -y \
     g++  make  automake libtool xutils-dev m4  libreadline-dev  libgsl0-dev \
     libglu-dev libgl1-mesa-dev freeglut3-dev  libopenscenegraph-dev \
-    libqt4-dev libqt4-opengl libqt4-opengl-dev qt4-qmake  libqt4-qt3support gnuplot gnuplot-x11 \
+    qtbase5-dev qtdeclarative5-dev libqt5opengl5-dev qttools5-dev qttools5-dev-tools gnuplot gnuplot-x11 \
     libncurses5-dev git
 RUN cd /opt; git clone https://github.com/georgmartius/lpzrobots.git #redo
 

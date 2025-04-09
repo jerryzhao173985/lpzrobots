@@ -63,7 +63,8 @@ typedef struct _MultiChannel{
 
 typedef QVector<double> ChannelVals;
 
-typedef QLinkedList<int> IndexList;
+#include <list>
+typedef std::list<int> IndexList;
 
 typedef QVector<MultiChannel> MultiChannels;
 

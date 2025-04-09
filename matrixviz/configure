@@ -5,9 +5,9 @@ if [ `uname -s` = "Darwin" ]; then
     SPEC=-spec macx-g++
 fi
 
-QMAKE=qmake-qt4
-if !(which $QMAKE); then
-    QMAKE=qmake;
+QMAKE=qmake-qt5
+if ! which $QMAKE > /dev/null 2>&1; then
+    QMAKE=qmake
 fi
 
 $QMAKE -makefile $SPEC matrixviz.pro

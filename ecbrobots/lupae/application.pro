@@ -11,7 +11,7 @@ MOC_DIR = moc
 
 
 #Qt used libraries/functionalities
-QT = core gui xml
+QT += core gui widgets xml
 
 # Input - Header
 HEADERS 	+= src/mainwindow.h
@@ -38,4 +38,4 @@ SOURCES 	+= src/avrDeviceList.cpp
 
 RESOURCES 	+= application.qrc
 
-           
+

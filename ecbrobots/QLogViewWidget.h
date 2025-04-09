@@ -35,7 +35,7 @@
 #ifndef QLOGVIEWWIDGET_H_
 #define QLOGVIEWWIDGET_H_
 
-#include <QtGui>
+#include <QtWidgets>
 #include <QWidget>
 #include "types.h"
 

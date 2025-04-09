@@ -22,13 +22,13 @@
 #ifndef SPHERICAL_ROBOT_GUI_H
 #define SPHERICAL_ROBOT_GUI_H
 
-/*
+#include <QtWidgets>
 #include <QWidget>
 #include <QPainter>
 #include <QPixmap>
 #include <QPoint>
-#include <QHBoxLayout>*/
-#include <QtGui>
+#include <QHBoxLayout>
+#include <QProgressBar>
 
 #include "SRMotorValueWidget.h"
 #include "SRMotSpeed2TiltWidget.h"
@@ -66,35 +66,35 @@ protected:
   void resizeEvent(QResizeEvent *event);
 
 public slots:
-  
+
   void closeGUI();
-  
+
 private:
 //   Ui::SphericalRobotGUI ui;
-  
+
   AbstractPipeReader* pipe_reader;
   SRGUIPipeFilter* srgui_filter;
-  
+
   class SRMotSpeed2TiltWidget* motspeed2tilt_widget;
   class SRMotorValueWidget* motor_tilt_widget;
   class SRIRSensorWidget* ir_widget;
 
   void initGui();
   void linkChannels();
-  
+
   QVBoxLayout *main_layout;
   QPushButton *startButton;
   QPushButton *stopButton;
   QPushButton *backwardButton;
   QPushButton *forwardButton;
   QPushButton *loadFileButton;
-  
+
   QGroupBox* createControlBox();
   QGroupBox* createIRProgressBar();
 
   QLabel *ir_labels[NUMBER_IR_SENSORS];
   QProgressBar *ir_progressBar[NUMBER_IR_SENSORS];
-  
+
 };
 #endif
 

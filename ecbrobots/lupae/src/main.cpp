@@ -1,6 +1,5 @@
 
-//#include <QApplication>
-#include <qapplication.h>
+#include <QApplication>
 #include "mainwindow.h"
 
 using namespace lpzrobots;

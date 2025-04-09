@@ -25,8 +25,8 @@
 #ifndef QDATASOURCE_H
 #define QDATASOURCE_H
 
-#include <qobject.h>
-#include <qthread.h>
+#include <QObject>
+#include <QThread>
 
 /** \brief Interface class for every data source we use
   * \author Dominic Schneider
