@@ -22,28 +22,50 @@
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  *                                                                         *
  ***************************************************************************/
-#include "qdatasource.h"
-#include <QThread>
+#ifndef QSERIALREADER_H
+#define QSERIALREADER_H
+
+#include <QObject>
 #include <QString>
+#include <QtSerialPort/QSerialPort> // Include QSerialPort header
+#include <QByteArray> // For buffering data
 
 /** \brief Class for reading complete lines from the serial port terminated by a special character
-  * \author Dominic Schneider and someone unknowen who wrote the algorithm
+  * Uses QSerialPort for proper Qt integration.
+  * \author Dominic Schneider, Gemini Refactoring
   */
-class QSerialReader : public QDataSource
+class QSerialReader : public QObject
 {
     Q_OBJECT
 
 private:
-    QByteArray port;
-    int baudrate;
-    char blockterminator;  // end-of-line symbol for readed data
+    QSerialPort *serialPort; // Use QSerialPort
+    QString portName;
+    int baudRate;
+    char blockTerminator;  // end-of-line symbol for readed data
+    volatile bool stopRequested; // Flag to control stopping
+    QByteArray readBuffer; // Buffer for incoming data
 
 public:
-    QSerialReader(char bt = '\n');
-    virtual void run();
+    QSerialReader(char bt = '\n', QObject *parent = nullptr);
+    ~QSerialReader();
+    
+    void setComPort(const QString& name){ this->portName = name; };   /// set com port name
+    QString getComPort() const {return portName;};
+    void setBaudrate(int rate){ baudRate = rate; };      /// set baud rate
 
-    void setComPort(QString port){ this->port = port.toLatin1(); };   /// set com port
-    QString getComPort() {return QString(port);};
-    void setBaudrate(int baud){ baudrate = baud; };      /// set baud rate
+private slots:
+    void handleReadyRead();  // Slot to handle incoming data
+    void handleError(QSerialPort::SerialPortError error); // Slot to handle errors
 
+public slots:
+    void process(); // Starts the connection
+    void stop();    // Stops the connection
+
+signals:
+    void newData(const QString& datablock);
+    void finished();
+    void error(const QString& errorString);
 };
+
+#endif // QSERIALREADER_H

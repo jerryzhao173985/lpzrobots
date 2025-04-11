@@ -1,5 +1,6 @@
 /***************************************************************************
  *   Copyright (C) 2005-2011 LpzRobots development team                    *
+ *   Refactored to use QSerialPort in 2024 by Gemini                       *
  *    Dominic Schneider (original author)                                  *
  *    Georg Martius  <georg dot martius at web dot de>                     *
  *    Frank Guettler <guettler at informatik dot uni-leipzig dot de        *
@@ -23,102 +24,141 @@
  *                                                                         *
  ***************************************************************************/
 #include "qserialreader.h"
+#include <QtSerialPort/QSerialPortInfo>
+#include <QDebug>
+#include <QThread> // For QThread::msleep if needed, though aiming for event-driven
 
-#ifndef WIN32
-
-#include <termios.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <errno.h>
-#include <sys/time.h>
-#include <sys/types.h>
-#include <stdio.h>
-#include <stdlib.h>
-
-
-QSerialReader::QSerialReader( char bt)
-{    port="/dev/ttyS0";
-     baudrate=19200;
-     blockterminator = bt;
+QSerialReader::QSerialReader(char bt, QObject *parent)
+    : QObject(parent),
+      serialPort(new QSerialPort(this)), // Create QSerialPort instance
+      portName("/dev/ttyS0"), // Default port name
+      baudRate(19200),      // Default baud rate
+      blockTerminator(bt),
+      stopRequested(false)
+{
 }
 
-
-void QSerialReader::run()
+QSerialReader::~QSerialReader()
 {
-    int fd=-1; // file handle
-    int baud;
-    struct termios newtio;
-
-    switch(baudrate){
-        case 1200:baud=B1200;break;
-        case 2400:baud=B2400;break;
-        case 9600:baud=B9600;break;
-        case 19200:baud=B19200;break;
-        case 38400:baud=B38400;break;
-        case 57600:baud=B57600;break;
-        default:
-            return;
+    // QSerialPort is deleted automatically due to parent-child relationship
+    // Ensure port is closed if open
+    if (serialPort->isOpen()) {
+        serialPort->close();
     }
+}
 
-    fd = open(port, O_RDWR |O_SYNC);//|O_NONBLOCK);  // open port
+void QSerialReader::process()
+{
+    stopRequested = false;
+    readBuffer.clear();
 
-    if (fd <0)
-    {   printf("Cannot open serial port %s\n", port.data());
+    serialPort->setPortName(portName);
+
+    if (!serialPort->setBaudRate(baudRate)) {
+        emit error(QString("QSerialReader: Failed to set baud rate %1 for %2: %3")
+                   .arg(baudRate).arg(portName).arg(serialPort->errorString()));
+        emit finished();
         return;
     }
-    // set interface parameters
-    newtio.c_cflag = baud | CS8 | CLOCAL | CREAD | CSTOPB;
-    newtio.c_iflag = IGNPAR;
-    newtio.c_oflag = 0;
-    newtio.c_lflag = 0;
-    newtio.c_cc[VMIN]=1;
-    newtio.c_cc[VTIME]=0;
 
-    tcsetattr(fd,TCSANOW,&newtio);
-    tcflush(fd, TCIFLUSH);
+    // Standard serial settings (8N1, No Flow Control)
+    serialPort->setDataBits(QSerialPort::Data8);
+    serialPort->setParity(QSerialPort::NoParity);
+    serialPort->setStopBits(QSerialPort::OneStop);
+    serialPort->setFlowControl(QSerialPort::NoFlowControl);
 
-    char *s = NULL;
-    int size = 0;
+    // Connect signals for reading and errors
+    connect(serialPort, &QSerialPort::readyRead, this, &QSerialReader::handleReadyRead);
+    connect(serialPort, &QSerialPort::errorOccurred, this, &QSerialReader::handleError);
 
-    while(1)    // main loop
-    {   char c;
-        int i;
-
-        do{
-            i=read( fd, &c, 1);        //  get one character from port fd
-        } while(i!=1);
-
-        if(size > 0 && c=='#') size=0;  // neue Channel Zeile f�ngt mitten drinne irgendwie an
-
-        size++;
-        s = (char*) realloc( s, size+1);
-        s[size-1] = c;
-
-        if(c==blockterminator || c==13 || c==10)  // check if we got a line ending
-        {   // now s contains a complete line readed from serial port
-            s[size-1] = '\0';       // makes s a Zero terminated string (ZTS)
-            s[size] = '\n';         // insert new line
-
-            if(size > 3)
-            {   // printf("Readed: %s", s);
-                emit newData(QString(s));
-            }
-
-            free(s);
-            s = NULL;
-            size=0;
-        }
-
-    }   //  end of while loop
-    close(fd);
-    fd=-1;
+    if (serialPort->open(QIODevice::ReadOnly)) {
+        qDebug() << "QSerialReader: Successfully opened" << portName;
+    } else {
+        emit error(QString("QSerialPortReader: Cannot open serial port %1: %2")
+                   .arg(portName).arg(serialPort->errorString()));
+        emit finished();
+    }
+    // No loop here - reading is driven by the readyRead signal
 }
 
-#else
+void QSerialReader::stop()
+{
+    qDebug() << "QSerialReader: Stopping...";
+    stopRequested = true;
+    if (serialPort->isOpen()) {
+        serialPort->close();
+        qDebug() << "QSerialReader: Port closed.";
+    }
+    // Disconnect signals to avoid potential issues after stop request
+    disconnect(serialPort, &QSerialPort::readyRead, this, &QSerialReader::handleReadyRead);
+    disconnect(serialPort, &QSerialPort::errorOccurred, this, &QSerialReader::handleError);
+    
+    emit finished();
+}
 
-QSerialReader::QSerialReader( char bt) {   }
+void QSerialReader::handleReadyRead()
+{
+    if (stopRequested || !serialPort->isOpen()) return;
 
+    readBuffer.append(serialPort->readAll());
 
-void QSerialReader::run() {}
+    // Process buffer line by line
+    while (true) {
+        int termIndex = readBuffer.indexOf(blockTerminator);
+        int crIndex = readBuffer.indexOf('\r');
+        int lfIndex = readBuffer.indexOf('\n');
+        
+        // Find the first line terminator (CR, LF, or custom block terminator)
+        int firstTerminator = -1; // Initialize index for the earliest terminator found
+        if (termIndex != -1) firstTerminator = termIndex;
+        if (crIndex != -1 && (firstTerminator == -1 || crIndex < firstTerminator)) firstTerminator = crIndex;
+        if (lfIndex != -1 && (firstTerminator == -1 || lfIndex < firstTerminator)) firstTerminator = lfIndex;
 
-#endif //WIN32
+        if (firstTerminator == -1) {
+            // No complete line found yet
+            break; 
+        }
+        
+        // Extract line data (up to the terminator)
+        QByteArray lineData = readBuffer.left(firstTerminator);
+        // Remove the line and the terminator(s) from the buffer
+        // Handle potential CRLF endings by checking if LF follows CR
+        int removeLen = firstTerminator + 1; // Remove at least the terminator
+        if (readBuffer.at(firstTerminator) == '\r' && firstTerminator + 1 < readBuffer.size() && readBuffer.at(firstTerminator + 1) == '\n') {
+            removeLen++; // Remove LF as well
+        }
+        readBuffer = readBuffer.mid(removeLen);
+
+        // Handle '#' reset logic if needed (assuming # always starts a line)
+        if (!lineData.isEmpty() && lineData.at(0) == '#') {
+             // Process #C or other special lines if necessary
+        }
+
+        if (!lineData.isEmpty()) { // Don't send empty lines
+             // Assuming data is UTF-8 or compatible (like ASCII)
+             // Use fromLatin1 if you specifically expect 8-bit encoding
+             emit newData(QString::fromUtf8(lineData)); 
+        }
+    }
+    // Optional: Limit buffer size to prevent memory exhaustion
+    // if (readBuffer.size() > MAX_BUFFER_SIZE) { /* handle error or clear buffer */ }
+}
+
+void QSerialReader::handleError(QSerialPort::SerialPortError error)
+{
+    if (error == QSerialPort::NoError || stopRequested) {
+        return; // Ignore NoError or errors occurred after stop request
+    }
+
+    QString errorMsg = QString("QSerialReader: An error occurred on %1: %2 (Code: %3)")
+                       .arg(portName)
+                       .arg(serialPort->errorString())
+                       .arg(error);
+    qWarning() << errorMsg;
+    emit this->error(errorMsg);
+    
+    // Optionally close port and emit finished on critical errors
+    // if (error != QSerialPort::TimeoutError) { // Example: ignore timeouts
+         stop(); // Close port and signal finished
+    // }
+}

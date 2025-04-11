@@ -31,18 +31,25 @@
 #include <QApplication>
 #include <QMenuBar>
 #include <QTimer>
-#include <QRegExp>
+#include <QRegularExpression>
 #include <QScrollArea>
+#include <QDebug>
+#include <QPointer>
 
 #include "quickmp.h"
 
 
 GuiLogger::GuiLogger(const CommLineParser& configobj, const QRect& screenSize)
   : QMainWindow( 0), screenSize(screenSize), channelData(0) {
-  setWindowTitle("GuiLogger");
+  // qDebug() << "GuiLogger::GuiLogger() - Constructor START in thread:" << QThread::currentThreadId();
+  setWindowTitle(QString("Guilogger-") + QString(VERSIONSTRING));
   mode     = configobj.getMode();
   filename = configobj.getFile();
 
+  // Make sure ChannelData is created and initialized before connecting signals
+  // qDebug() << "GuiLogger::GuiLogger() - Creating ChannelData instance";
+  
+  // Connect signals after creating ChannelData object
   connect(&channelData, SIGNAL(quit()), this, SLOT(doQuit()));
   connect(&channelData, SIGNAL(rootNameUpdate(QString)), this, SLOT(updateRootName(QString)));
 
@@ -53,7 +60,11 @@ GuiLogger::GuiLogger(const CommLineParser& configobj, const QRect& screenSize)
   const int maxplottimer = 5000;
   filePlotHorizon = 500;
 
-  if(mode == "file" && !filename.isEmpty()) linecount = analyzeFile();
+  if(mode == "file" && !filename.isEmpty()) {
+      qDebug() << "GuiLogger::GuiLogger() - Analyzing file:" << filename;
+      linecount = analyzeFile();
+      qDebug() << "GuiLogger::GuiLogger() - File analysis complete, linecount:" << linecount;
+  }
 
   setCentralWidget(new QWidget(this));
   layout           = new QVBoxLayout(centralWidget());
@@ -123,9 +134,9 @@ GuiLogger::GuiLogger(const CommLineParser& configobj, const QRect& screenSize)
   QWidget *horizonsliderwidget = new QWidget(channelandslider);
   channelandsliderlayout->addWidget(horizonsliderwidget);
 
-  QWidget *datasliderwidget;
-  if(mode== "file"){
-    datasliderwidget    = new QWidget(channelandslider);
+  QWidget *datasliderwidget = nullptr;
+  if(mode == "file") {
+    datasliderwidget = new QWidget(channelandslider);
     channelandsliderlayout->addWidget(datasliderwidget);
   }
 
@@ -145,7 +156,7 @@ GuiLogger::GuiLogger(const CommLineParser& configobj, const QRect& screenSize)
     horizonslidervalue->setText(QString::number(filePlotHorizon, 10));
   } else {
     horizonslider->setMinimum(10);
-    horizonslider->setMaximum(maxplottimer);   // MaxTimer f�r Plottimer
+    horizonslider->setMaximum(maxplottimer);   // MaxTimer for Plottimer
     horizonslider->setValue(startplottimer);       // actual Value for Plottimer
     horizonsliderlayout->addWidget(new QLabel("Interval", horizonsliderwidget));
     horizonslidervalue->setText(QString("%1\nms").arg(startplottimer));
@@ -195,27 +206,43 @@ GuiLogger::GuiLogger(const CommLineParser& configobj, const QRect& screenSize)
   filemenu->addAction("&Exit", this, SLOT(doQuit()));
 
 
-  plottimer = new QTimer( this);
-  if(mode == "file"){
+  if(mode == "file") {
     resize( 520, 600 );
-    updateSliderPlot();
-  }else{
+    // updateSliderPlot(); // Don't update plot yet, gnuplot not ready
+    // Schedule Gnuplot initialization after event loop starts
+    QTimer::singleShot(0, this, SLOT(initializeGnuplotWindows())); 
+  } else {
+    // For pipe/serial mode, start timer and schedule gnuplot init
+    plottimer = new QTimer( this);
     resize( 520, 600 );
     connect(plottimer, SIGNAL(timeout()), SLOT(plotUpdate()));
     plottimer->setSingleShot(false);
-    plottimer->start(startplottimer);
+    // Start timer only AFTER gnuplot windows are initialized
+    // plottimer->start(startplottimer); 
+    QTimer::singleShot(0, this, SLOT(initializeGnuplotWindows())); 
+    // qDebug() << "GuiLogger::GuiLogger() - Plot timer ready, interval:" << startplottimer;
   }
+  // qDebug() << "GuiLogger::GuiLogger() - Constructor END (Gnuplot init deferred)";
 
 }
 
 
 GuiLogger::~GuiLogger() {
-  FOREACH(QVector<PlotInfo*>,plotInfos, p){
-    delete *p;
-  }
+  // qDebug() << "GuiLogger::~GuiLogger() - Destructor called.";
+  // Ensure PlotInfo objects are deleted
+  qDeleteAll(plotInfos);
+  plotInfos.clear(); // Clear the vector after deleting contents
+
+  // Delete Gnuplot instances directly
+  // qDebug() << "GuiLogger::~GuiLogger() - Deleting" << plotWindows.size() << "Gnuplot instances.";
+  qDeleteAll(plotWindows);
+  plotWindows.clear();
+  // qDebug() << "GuiLogger::~GuiLogger() - Gnuplot instances deleted.";
+
 }
 
 void GuiLogger::horizonSliderReleased() {
+  // qDebug() << "GuiLogger::horizonSliderReleased()";
   updateSliderPlot();
   if(mode != "file") // in this case this slider shows the time
     plottimer->setInterval(filePlotHorizon);  // change Plotintervall
@@ -237,17 +264,23 @@ void GuiLogger::horizonSliderValueChanged(int value) {
 
 
 void GuiLogger::sendButtonPressed() {
-  //   // send command to gnuplot
-  for(int i=0; i<plotwindows; i++)
-    plotWindows[i].command(paramvaluelineedit->text());
+  qDebug() << "GuiLogger::sendButtonPressed()";
+  QString cmd = paramvaluelineedit->text();
+  for(int i=0; i<plotWindows.size(); ++i) {
+      if (plotWindows.at(i)) { // Check if pointer is valid
+          plotWindows.at(i)->command(cmd);
+      }
+  }
 }
 
 void GuiLogger::dataSliderReleased() {
+  // qDebug() << "GuiLogger::dataSliderReleased()";
   updateSliderPlot();
 }
 
 
 void GuiLogger::updateSliderPlot() {
+  // qDebug() << "GuiLogger::updateSliderPlot()";
   if(mode!="file") return;
   int start = dataslider->value();
 
@@ -256,10 +289,11 @@ void GuiLogger::updateSliderPlot() {
   parameterlistbox->append("set zeroaxis");
 
 
-  for(int i=0; i<plotwindows; i++){
-    QString cmd = plotWindows[i].plotCmd(filename,start,start+filePlotHorizon);
+  for(int i=0; i<plotWindows.size(); ++i) {
+    if (!plotWindows.at(i)) continue;
+    QString cmd = plotWindows.at(i)->plotCmd(filename,start,start+filePlotHorizon);
     if(!cmd.isEmpty()){
-      plotWindows[i].command(cmd);
+      plotWindows.at(i)->command(cmd);
       parameterlistbox->append(cmd);
     }
   }
@@ -268,6 +302,7 @@ void GuiLogger::updateSliderPlot() {
 
 /// analyzes the file, send channels and return number of lines with data
 int GuiLogger::analyzeFile() {
+  // qDebug() << "GuiLogger::analyzeFile() START";
   char *s=NULL;
   int buffersize=0;
   char c;
@@ -275,11 +310,10 @@ int GuiLogger::analyzeFile() {
   int linecount=0;
 
   FILE *instream;
-  //         printf("Counting Lines...   ");
 
   instream = fopen(filename.toLatin1(), "r");
   if(instream == NULL)
-    {   printf("Cannot open input file.\n");
+    {   qWarning() << "Cannot open input file:" << filename;
       return 0;
     }
   bool channelline=false;
@@ -317,15 +351,14 @@ int GuiLogger::analyzeFile() {
 
   fclose(instream);
 
-  //    linecount = (linecount-250 > 0)?linecount:0;  // um in einem Datensatz < Buffersize nicht scrollen zu k�nnen
-
-  //         printf("%i\n", linecount);
   if(s != NULL) free(s);
+  qDebug() << "GuiLogger::analyzeFile() END, lines:" << linecount;
   return linecount;
 }
 
 
 void GuiLogger::save(){
+  qDebug() << "GuiLogger::save()";
   save(false);
 }
 
@@ -431,24 +464,23 @@ void GuiLogger::save(bool blank){
 
 /// loads the channel configuration from file
 void GuiLogger::load() {
+  qDebug() << "GuiLogger::load() - Starting config load.";
   int pwin;
   QString qv;
-  //    re.setWildcard(TRUE);
-
-  IniSection* section;
-  IniVar* var;
 
   pwin = -1;
 
   cfgFile.setFilename("guilogger.cfg");
   if(!cfgFile.Load()){
-    printf("Guilogger: Configuration file does not exist try to create it.\n");
+    qWarning() << "Guilogger: Configuration file guilogger.cfg does not exist, creating default.";
     save(true); // this automatically creates the config (on disk and in memory)
+  } else {
+    qDebug() << "Guilogger::load() - Config file loaded.";
   }
 
   // load general settings
   if(cfgFile.getValueDef("General","Version","").trimmed() != VERSIONSTRING) {
-    printf("Guilogger: Configuration file has incorrect version, I create a new one.\n");
+    qWarning() << "Guilogger: Configuration file has incorrect version, creating new one.";
     save(true);// this automatically creates the config (on disk and in memory)
   }
   plotwindows = cfgFile.getValueDef("General","PlotWindows","5").toInt();
@@ -456,35 +488,45 @@ void GuiLogger::load() {
   datadelayrate = cfgFile.getValueDef("General","MinData4Replot","1").toInt();
 
   gnuplotcmd    = cfgFile.getValueDef("General","Gnuplot","gnuplot");
+  qDebug() << "GuiLogger::load() - General settings loaded. PlotWindows:" << plotwindows << "Gnuplot cmd:" << gnuplotcmd;
 
-  if(plotInfos.size()<plotwindows){
-    // create plotinfos
-    for(int i=plotInfos.size(); i<plotwindows; i++){
-      PlotInfo* pi = new PlotInfo(channelData);
-      connect(&channelData, SIGNAL(channelsChanged()), pi, SLOT(channelsChanged()));
-      plotInfos.push_back(pi);
+  // Resize PlotInfo vector
+  if (plotInfos.size() < plotwindows) {
+    int oldSize = plotInfos.size();
+    plotInfos.resize(plotwindows);
+    for (int i = oldSize; i < plotwindows; ++i) {
+      plotInfos[i] = new PlotInfo(channelData);
+      connect(&channelData, &ChannelData::channelsChanged, plotInfos[i], &PlotInfo::channelsChanged);
     }
-  }else{ // delete some plotwindows
-    int old = plotInfos.size();
-    for(int i = plotwindows; i < old; i++){
-      plotInfos.pop_back();
+  } else if (plotInfos.size() > plotwindows) {
+    qDebug() << "GuiLogger::load() - Resizing plotInfos down from" << plotInfos.size() << "to" << plotwindows;
+    for (int i = plotwindows; i < plotInfos.size(); ++i) {
+      delete plotInfos[i];
     }
+    plotInfos.resize(plotwindows);
   }
 
+  qDebug() << "GuiLogger::load() - Loading window settings...";
   // load window settings
-  foreach(IniSection* section, cfgFile.sections) {
+  for(const auto* section : cfgFile.sections) {
     if(section->getName() == "Window"){
-      pwin=0;
-      foreach(IniVar* var, section->vars)
-        {   qv = var->getValue();
-          if(var->getName() == "Number") {
-            pwin = qv.toInt();
-            if(plotInfos.size()<=pwin){
-              fprintf(stderr, "we don't have so many windows: %i\n", pwin);
-              goto finish;
-            }
-          } else if(var->getName() == "Disabled") {
-            plotInfos[pwin]->setIsVisible(qv.trimmed() != "yes");
+      pwin = -1;
+      int current_pwin = -1;
+      for(const auto* var : section->vars) {
+        qv = var->getValue().trimmed();
+        if(var->getName() == "Number") {
+          bool ok;
+          current_pwin = qv.toInt(&ok);
+          if (!ok || current_pwin < 0 || current_pwin >= plotwindows) {
+            qWarning() << "Guilogger: Invalid or out-of-bounds window number" << qv << "in config. Skipping section.";
+            current_pwin = -1;
+            break;
+          }
+          pwin = current_pwin;
+        }
+        else if (pwin != -1) {
+          if(var->getName() == "Disabled") {
+            plotInfos[pwin]->setIsVisible(qv != "yes");
           } else if(var->getName() == "Reference1") {
             plotInfos[pwin]->setReference1(qv);
           } else if(var->getName() == "Reference2") {
@@ -493,24 +535,39 @@ void GuiLogger::load() {
             plotInfos[pwin]->setChannelShow(qv,true);
           } else if(var->getName() == "Size") {
             int x,y;
-            if(sscanf(qv.toLatin1().data(),"%ix%i",&x,&y)==2)
+            QRegularExpression sizeRegex("(\\d+)x(\\d+)");
+            QRegularExpressionMatch match = sizeRegex.match(qv);
+            if(match.hasMatch()) {
+              x = match.captured(1).toInt();
+              y = match.captured(2).toInt();
               windowsize.insert(pwin, QSize(x,y));
+            } else {
+              qWarning() << "Guilogger: Invalid size format" << qv << "for window" << pwin;
+            }
           } else if(var->getName() == "Position") {
             int w,h;
-            if(sscanf(qv.toLatin1().data(),"%i %i",&w,&h)==2)
+            QRegularExpression posRegex("(-?\\d+)\\s+(-?\\d+)");
+            QRegularExpressionMatch match = posRegex.match(qv);
+            if(match.hasMatch()){
+              w = match.captured(1).toInt();
+              h = match.captured(2).toInt();
               windowposition.insert(pwin, QSize(w,h));
+            } else {
+              qWarning() << "Guilogger: Invalid position format" << qv << "for window" << pwin;
+            }
           }
         }
-
+      }
     }
   }
- finish:
+  qDebug() << "GuiLogger::load() - Window settings loaded.";
 
   // load and calculate positioning
   QString calcPositions = cfgFile.getValueDef("General","CalcPositions","yes");
   QString windowLayout = cfgFile.getValueDef("General","WindowLayout","blh");
   int windowsPerRowColumn = cfgFile.getValueDef("General","WindowsPerRowColumn","3").toInt();
   if(calcPositions.contains("yes")){
+    qDebug() << "GuiLogger::load() - Calculating window positions...";
     // arrange Gnuplot windows
     int xstart = windowLayout.contains("l") ? 0 : screenSize.width();
     int xinc   = windowLayout.contains("l") ? 1 : -1;
@@ -530,53 +587,42 @@ void GuiLogger::load() {
       }
       windowposition.insert(k,QSize(xinc > 0 ? xpos : xpos-s.width(),yinc > 0 ? ypos : ypos-s.height()));
     }
+    qDebug() << "GuiLogger::load() - Window positions calculated.";
   }
 
-  // close all plotwindows
+
+  qDebug() << "GuiLogger::load() - Setting up Gnuplot instances (NO INIT YET)...";
+  // --- Direct Gnuplot Instance Setup --- 
+  qDebug() << "GuiLogger::load() - Deleting existing Gnuplot instances (if any). Size:" << plotWindows.size();
+  qDeleteAll(plotWindows); // Delete existing instances
   plotWindows.clear();
 
-  // create plotting windows
-  for(int i=0; i<plotwindows; i++){
-    plotWindows.push_back(Gnuplot(plotInfos[i])); // TODO load visiblity from cfgfile
-  }
+  plotWindows.resize(plotwindows);
 
-  //open and position plotwindows
-  //  serial version
-  for(int k=0; k<plotwindows; k++) {
-    QSize s = windowsize.contains(k) ? windowsize[k] : QSize(400,300);
-    if(windowposition.contains(k)){
-      QSize pos = windowposition[k];
-      plotWindows[k].init(gnuplotcmd, s.width(), s.height(), pos.width(), pos.height());
-    }else{
-      plotWindows[k].init(gnuplotcmd, s.width(), s.height());
-    }
+  for (int i = 0; i < plotwindows; ++i) {
+      qDebug() << "GuiLogger::load() - Creating Gnuplot instance pointer for window" << i;
+      plotWindows[i] = new Gnuplot(plotInfos[i]); // Create directly
   }
+  // ------------------------------------
+  qDebug() << "GuiLogger::load() - Gnuplot instance pointers setup complete.";
 
-  // send gnuplot commands
-  IniSection GNUplotsection;
-  if(cfgFile.getSection(GNUplotsection,"GNUPlot",false)){
-    IniVar* var;
-    QString qv;
-    foreach(IniVar* var, GNUplotsection.vars) {
-      qv = var->getValue();
-      if(var->getName() == "Command")
-        for(int k=0; k<plotwindows; k++)
-          plotWindows[k].command(qv.toLatin1().data());
-    }
-  }
+  // --- REMOVED gnuplot init and command sending from here --- 
 
   channelData.setBufferSize(cfgFile.getValueDef("General","BufferSize","250").toInt());
-  printf("Guilogger: Config file loaded.\n");
+  qDebug() << "Guilogger: Config file loading finished (Gnuplot instances created but not initialized).";
 }
 
 
-void GuiLogger::editconfig(){
-  system("$EDITOR ./guilogger.cfg");
-
+void GuiLogger::editconfig() {
+  qDebug() << "GuiLogger::editconfig()";
+  if(system("$EDITOR ./guilogger.cfg") == -1) {
+    qWarning() << "Failed to launch editor for config file";
+  }
 }
 
 
 void GuiLogger::doQuit(){
+  qDebug() << "GuiLogger::doQuit()";
   emit quit();
 }
 
@@ -586,6 +632,7 @@ void GuiLogger::updateRootName(QString name) {
 
 
 void GuiLogger::plotChannelsChanged(int window){
+  qDebug() << "GuiLogger::plotChannelsChanged() for window:" << window;
   if(mode=="file")
     updateSliderPlot();
   else
@@ -594,34 +641,125 @@ void GuiLogger::plotChannelsChanged(int window){
 
 // updates every n milliseconds the GNUPlot windows
 void GuiLogger::plotUpdate(){
+  // This might be too verbose if the timer interval is short
+  // qDebug() << "GuiLogger::plotUpdate() - Timer tick";
   plotUpdate(true);
 }
 
 void GuiLogger::plotUpdate(bool waitfordata, int window)
 {
+  // qDebug() << "GuiLogger::plotUpdate() - wait:" << waitfordata << "window:" << window << "time diff:" << (channelData.getTime() - lastPlotTime);
   if(mode=="file") return;
-  //  fprintf(stderr,"udpaten, %i, %i\n", waitfordata , channelData.getTime());
-  if(!waitfordata || channelData.getTime() - lastPlotTime > datadelayrate){
-    // serial version
-    if(window==-1){
-//       // serial version
-//       for(int i=0; i<plotwindows; i++) {
-//         plotWindows[i].plot();
-//       }
-    // Parallel Version
-      PlotWindows* pw = &plotWindows;
-      QMP_SHARE(pw);
-      QMP_PARALLEL_FOR(i,0,plotwindows){
-        QMP_USE_SHARED(pw, PlotWindows*);
-          (*pw)[i].plot();
-      }
-      QMP_END_PARALLEL_FOR;
 
+  if(!waitfordata || channelData.getTime() - lastPlotTime > datadelayrate){
+    qDebug() << "GuiLogger::plotUpdate() - Updating plot windows. Window:" << window;
+    if(window==-1){
+      // serial version
+      for(int i=0; i<plotWindows.size(); i++) {
+          if (plotWindows.at(i)) {
+             qDebug() << "GuiLogger::plotUpdate() - Calling plot() for window" << i;
+             // Pass filePlotHorizon as the history limit
+             plotWindows.at(i)->plot(filePlotHorizon); 
+          }
+      }
     } else {
-      if(window >=0 && window<plotwindows)
-        plotWindows[window].plot();
+      if(window >=0 && window < plotWindows.size() && plotWindows.at(window)) {
+         qDebug() << "GuiLogger::plotUpdate() - Calling plot() for window" << window;
+         // Pass filePlotHorizon as the history limit
+        plotWindows.at(window)->plot(filePlotHorizon);
+      }
     }
     if(waitfordata) lastPlotTime=channelData.getTime();
-
   }
+}
+
+// --- NEW SLOT --- 
+void GuiLogger::initializeGnuplotWindows() {
+    qDebug() << "GuiLogger::initializeGnuplotWindows() - START";
+
+    bool anyWindowInitialized = false;
+    int initializedCount = 0;
+
+    //open and position plotwindows
+    for(int k=0; k<plotWindows.size(); ++k) {
+        if (!plotWindows.at(k)) {
+            qWarning() << "GuiLogger::initializeGnuplotWindows() - Skipping init for null Gnuplot instance at index" << k;
+            continue;
+        }
+        QSize s = windowsize.contains(k) ? windowsize[k] : QSize(400,300);
+        int x = -1, y = -1;
+        if(windowposition.contains(k)){
+          QSize pos = windowposition[k];
+          x = pos.width();
+          y = pos.height();
+        }
+        // Call init directly
+        qDebug() << "GuiLogger::initializeGnuplotWindows() - Calling init for window" << k << "Size:" << s << "Pos:" << x << y;
+        if (plotWindows.at(k)->init(gnuplotcmd, s.width(), s.height(), x, y)) {
+            anyWindowInitialized = true;
+            initializedCount++;
+        } else {
+            qWarning() << "GuiLogger::initializeGnuplotWindows() - Failed to initialize window" << k;
+        }
+    }
+    
+    if (initializedCount > 0) {
+        qDebug() << "GuiLogger::initializeGnuplotWindows() - Gnuplot window init complete. Successfully initialized:" 
+                 << initializedCount << "of" << plotWindows.size() << "windows.";
+    } else {
+        qWarning() << "GuiLogger::initializeGnuplotWindows() - Failed to initialize ANY gnuplot windows!";
+        
+        // Try with fallback options
+        qDebug() << "GuiLogger::initializeGnuplotWindows() - Trying fallback initialization...";
+        for(int k=0; k<plotWindows.size(); ++k) {
+            if (!plotWindows.at(k)) continue;
+            
+            // Try with minimal options
+            if (plotWindows.at(k)->init("gnuplot", 400, 300, -1, -1)) {
+                anyWindowInitialized = true;
+                initializedCount++;
+                qDebug() << "GuiLogger::initializeGnuplotWindows() - Fallback init succeeded for window" << k;
+            }
+        }
+        
+        if (initializedCount == 0) {
+            qCritical() << "GuiLogger::initializeGnuplotWindows() - All gnuplot initialization attempts failed!";
+            // Continue anyway - the plotting functions will check if processes are running
+        }
+    }
+
+    qDebug() << "GuiLogger::initializeGnuplotWindows() - Sending initial Gnuplot commands...";
+    // send gnuplot commands (after init)
+    IniSection GNUplotsection;
+    if(cfgFile.getSection(GNUplotsection,"GNUPlot",false)){
+        QString qv;
+        for(const auto* var : GNUplotsection.vars) {
+          qv = var->getValue();
+          if(var->getName() == "Command") {
+            qDebug() << "GuiLogger::initializeGnuplotWindows() - Found initial command:" << qv;
+            for(int k=0; k<plotWindows.size(); ++k) {
+                if (!plotWindows.at(k)) continue; // Check instance exists
+                // Call command directly
+                qDebug() << "GuiLogger::initializeGnuplotWindows() - Sending initial command for window" << k << "Cmd:" << qv;
+                plotWindows.at(k)->command(qv);
+            }
+          }
+        }
+    }
+    qDebug() << "GuiLogger::initializeGnuplotWindows() - Initial Gnuplot commands sent.";
+
+    // If in file mode, trigger initial plot update now
+    if (mode == "file") {
+        qDebug() << "GuiLogger::initializeGnuplotWindows() - Triggering initial updateSliderPlot for file mode.";
+        updateSliderPlot();
+    } else {
+        // If using timer, start it now
+        if (plottimer) {
+            qDebug() << "GuiLogger::initializeGnuplotWindows() - Starting plot timer.";
+            plottimer->start(startplottimer);
+        } else {
+            qWarning() << "GuiLogger::initializeGnuplotWindows() - Plot timer is null!";
+        }
+    }
+    qDebug() << "GuiLogger::initializeGnuplotWindows() - END";
 }

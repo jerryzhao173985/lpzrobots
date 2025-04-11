@@ -22,23 +22,43 @@
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  *                                                                         *
  ***************************************************************************/
-#include "qdatasource.h"
+#ifndef QPIPEREADER_H
+#define QPIPEREADER_H
+
+#include <QObject>
+#include <QString>
 #include <cstdio>
+#include <QSocketNotifier>
 
 /** \brief Class for reading blocks/lines from a pipe (e.g. stdin)
   * \author Dominic Schneider
   */
-class QPipeReader : public QDataSource
+class QPipeReader : public QObject
 {
     Q_OBJECT
 
 private:
-    int delay;
     FILE* f;
+    QSocketNotifier *notifier;
+    int delay;
 
 public:
-    QPipeReader(int delay = 0, FILE* f=stdin);
-    virtual void run();
-    void setDelay(int delay) {this->delay = delay;}
-    int  getDelay()  {return delay;}
+    QPipeReader(int /*delay*/ = 0, FILE* f=stdin, QObject *parent = nullptr);
+    ~QPipeReader();
+    
+public:
+    int getFileno() const;
+
+public slots:
+    void initializeNotifier();
+
+private slots:
+    void handleReadyRead();
+
+signals:
+    void newData(const QString& datablock);
+    void finished();
+    void errorOccurred(const QString& errorMsg);
 };
+
+#endif // QPIPEREADER_H

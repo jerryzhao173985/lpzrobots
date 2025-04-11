@@ -8,6 +8,7 @@
 #define GNUPLOT_H
 
 #include <QString>
+#include <QProcess>
 
 #include "plotinfo.h"
 
@@ -22,12 +23,12 @@
 
 class Gnuplot {
 public: 
-  Gnuplot() : plotInfo(0) {} 
+  Gnuplot() : plotInfo(0), process(nullptr), windowWidth(400), windowHeight(300), windowX(-1), windowY(-1) {}
   Gnuplot(const PlotInfo* plotinfo);
   
   ~Gnuplot();
 
-  void init(const QString& gnuplotcmd, int w=400,int h=300, int x=-1, int y=-1);
+  bool init(const QString& gnuplotcmd, int w=400,int h=300, int x=-1, int y=-1);
   
   bool open(const QString& gnuplotcmd, int w=400,int h=300, int x=-1, int y=-1);
 
@@ -39,30 +40,24 @@ public:
   void command(const QString& cmd);
 
 
-  /** make gnuplot plot channels */
-  void plot();    
+  /** make gnuplot plot selected content of data buffers */
+  void plot(int historyLimit);
 
   /** creates the plot command
       if file is empty then the stdin is assumed ('-') and no using are given
    */
   QString plotCmd(const QString& file=QString(), int start=-1, int end=-1);
     
-//   /** make gnuplot XY plot content of x against y data buffers 
-//       use it as follow:
-//       <pre>
-//       T x[]={a,b,c};
-//       T y[]={x,y,z};
-//       plotXY(x,y,3);
-//       </pre>
-//   */
-//   void plotXY(const T *x, const T *y,int size);    
-
-//   /** make gnuplot XY plot content of x against y data buffers */
-//   void plotXY(const T& x, const T& y);
-
 private:
+  /** Try different terminal types until one works */
+  void tryTerminals(int w, int h, int x, int y);
+  
   const PlotInfo* plotInfo;
-  FILE* pipe;
+  QProcess* process;
+  int windowWidth;
+  int windowHeight;
+  int windowX;
+  int windowY;
 };
 
 #endif

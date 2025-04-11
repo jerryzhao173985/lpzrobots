@@ -55,6 +55,10 @@
 #include <QSlider>
 #include <QTextEdit>
 #include <QTableView>
+#include <QRect>
+#include <QThread>
+#include <QPointer>
+#include <QVector>
 
 #include <list>
 #include "gnuplot.h"
@@ -62,12 +66,14 @@
 #include "inifile.h"
 #include "commlineparser.h"
 #include "plotchannelstablemodel.h"
+#include "channeldata.h"
 
 class ChannelRow;
 class ChannelSelectRow;
 class QTimer;
+class QThread;
 
-typedef QVector<Gnuplot> PlotWindows;
+typedef QVector<Gnuplot*> PlotWindows;
 
 /** \brief Base class for layout and all the visualisation stuff
  * \author Dominic Schneider
@@ -103,6 +109,7 @@ private slots:
   void sendButtonPressed();
   void doQuit();
   void updateRootName(QString name);
+  void initializeGnuplotWindows();
 
 signals:
   void quit();
@@ -129,9 +136,9 @@ private:
   QTextEdit   *parameterlistbox;
   QLineEdit   *paramvaluelineedit;
   QPushButton *sendbutton;
-  QSlider     *dataslider;
+  QSlider     *dataslider = nullptr;
   QSlider     *horizonslider;
-  QLabel      *dataslidervalue;
+  QLabel      *dataslidervalue = nullptr;
   QLabel      *horizonslidervalue;
 
   QMenu       *filemenu;
@@ -151,7 +158,7 @@ private:
   QString mode;
   QString filename;
 
-  QTimer *plottimer;
+  QTimer *plottimer = nullptr;
   int startplottimer;
 
   QMutex queuemutex;

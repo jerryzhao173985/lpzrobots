@@ -32,6 +32,7 @@
 #include <QList>
 #include <QStringList>
 #include <QHash>
+#include <QMutex>
 
 typedef QString ChannelObjectName;
 typedef QString ChannelName;
@@ -127,12 +128,23 @@ public:
 
 public slots:
   void receiveRawData(QString line);
+  void channelsChangedDeferred();
 
 protected:
   /// extracts a multichannel from the channels starting from position i (i is advanced)
   MultiChannel extractMultiChannel(int* i);
+  /// extracts a multichannel directly without mutex locking (for initialization)
+  MultiChannel extractMultiChannelDirect(int* i);
   /// returns the name without the index specifiers e.g. for A[0][3] it returns A
-  QString getChannelNameRoot(const ChannelName& name) const ;
+  QString getChannelNameRoot(const ChannelName& name) const;
+  /// Non-locking version of getChannelNameRoot
+  QString getChannelNameRootDirect(const ChannelName& name) const;
+  /// Helper method to avoid mutex recursion during initialization
+  int getChannelIndexNoLock(const ChannelName& name) const;
+  /// Non-locking versions of getData for internal use
+  ChannelVals getDataNoLock(const IndexList& channels, int i) const;
+  ChannelVals getDataNoLock(const QList<ChannelName>& channels, int i) const;
+
 signals:
   void quit();
   void channelsChanged();
@@ -140,6 +152,7 @@ signals:
   void rootNameUpdate(QString name);
 
 private:
+  mutable QMutex dataMutex; // Added mutex for thread safety
   /** first array is the ring buffer
       second array if channels */
   QVector<ChannelVals>  data;

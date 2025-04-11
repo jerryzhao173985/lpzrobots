@@ -27,6 +27,7 @@
 #include <iostream>
 using namespace std;
 #include <QRegExp>
+#include <QDebug>
 
 
 IniFile::IniFile(){
@@ -60,7 +61,7 @@ bool IniFile::Load(){
   sections.clear();
   char buffer[1024];
   QString line;
-  IniSection* momsection;
+  IniSection* momsection = nullptr;
   IniVar* momvar;
   bool beforeFirstSection=true;
   int LineType;
@@ -83,7 +84,7 @@ bool IniFile::Load(){
 #endif
     return false;
   }
-  // Zeile f�r Zeile auslesen und zuordnen
+  // Zeile fr Zeile auslesen und zuordnen
   while( (file.readLine(buffer,1024))>0 ){
     line=QString(buffer);
     str1="";
@@ -103,13 +104,19 @@ bool IniFile::Load(){
       case SECTION:
         beforeFirstSection=false;
         momsection=new IniSection(str1);
+        // qDebug() << "IniFile::Load - Parsed Section: [" << str1 << "]";
         sections.append(momsection);
       break;
       case VAR:
         if (beforeFirstSection){ // wird als Kommentar gewertet
           comment.append(str1);
         }else{                    // Normale Variable
+          if (!momsection) { // ADD CHECK: Ensure momsection is valid
+              qWarning() << "IniFile::Load - Error: Trying to add variable '" << str1 << "' without a current section.";
+              continue; // Skip this invalid variable
+          }
           momvar=new IniVar(str1,str2,str3);
+          // qDebug() << "IniFile::Load - Parsed Var: Name='" << str1 << "' Value='" << str2 << "' Comment='" << str3.trimmed() << "' (in Section: " << momsection->getName() << ")";
           momsection->vars.append(momvar);
         }
       break;
@@ -124,49 +131,53 @@ bool IniFile::Load(){
 
 
 int IniFile::getLineType( QString _line, QString &str1, QString &str2, QString &str3){
-  QRegExp regexp;
-  int start,len;
+  // Trim whitespace and newline characters first
+  _line = _line.trimmed();
 
-  if (_line.isEmpty()|| _line=="\n") return EMPTY;
+  if (_line.isEmpty()) return EMPTY;
 
-  if (_line.indexOf(QRegExp("^[;#]"),0)!=-1){
+  // Simplified comment check
+  if (_line.startsWith('#') || _line.startsWith(';')){
     str1=_line;
     return COMMENT;
   }
 
-  regexp.setPattern("^\\[.+\\]");
-  if ( (start=regexp.indexIn(_line,0))>=0){
-    len=regexp.matchedLength();
-    str1=_line.mid(start+1,len-2);
+  // Simplified section check
+  if (_line.startsWith('[') && _line.endsWith(']')) {
+    str1 = _line.mid(1, _line.length() - 2);
     return SECTION;
   }
 
-  regexp.setPattern(".+=.+");
-  if ( (start=regexp.indexIn(_line,0))>=0 ){
-    len=regexp.matchedLength();
-    regexp.setPattern(".+=");
-    start=regexp.indexIn(_line,0);
-    len=regexp.matchedLength();
-    str1=_line.left(len-1);
-    int start2=len;
+  // Simplified VAR check using indexOf
+  int equalsPos = _line.indexOf('=');
+  if (equalsPos != -1) {
+    str1 = _line.left(equalsPos).trimmed(); // Variable name
+    QString remaining = _line.mid(equalsPos + 1);
 
+    // Find the first comment character ('#' or ';')
+    int commentPos = -1;
+    int hashPos = remaining.indexOf('#');
+    int semiPos = remaining.indexOf(';');
+    if (hashPos != -1 && semiPos != -1) {
+        commentPos = qMin(hashPos, semiPos);
+    } else if (hashPos != -1) {
+        commentPos = hashPos;
+    } else {
+        commentPos = semiPos; // Might be -1 if neither exists
+    }
 
-    regexp.setPattern(".+[;#]");
-    start=regexp.indexIn( _line, start2);
-    len=regexp.matchedLength();
-    if (start>=0){ // is there a comment at the end of the line?
-      str2=_line.mid(start2,len-1);
-      str3=_line.mid(start2+len-1);
-    }else{  // no comment
-      str2=_line.mid(start2, _line.length()-start2-1);
+    if (commentPos != -1) { // Comment found
+      str2 = remaining.left(commentPos).trimmed(); // Value
+      str3 = remaining.mid(commentPos); // Comment (includes # or ;)
+    } else { // No comment
+      str2 = remaining.trimmed(); // Value
+      str3 = "";
     }
     return VAR;
   }
 
-  // kann sich nur um eine alleinstehende Variable handeln
-  str1=_line;
-
-  return VAR;
+  // Ignore lines that don't match the expected formats (COMMENT, SECTION, VAR with '=')
+  return EMPTY;
 }
 
 
@@ -182,8 +193,6 @@ bool IniFile::Save(){
     return false;
   }
 
-  IniSection* section;
-  IniVar* var;
   QString line;
 
   // Durchgehen und alles reinschreiben
@@ -224,7 +233,6 @@ void IniFile::Clear(){
 }
 
 
-
 bool IniFile::getSection(IniSection& _section,QString _name,bool _next){
   static QString lastname;
   static int currentIndex = 0;
@@ -261,21 +269,20 @@ void IniFile::delSection(IniSection* _section)
 {
   sections.removeOne(_section);
   delete _section;
-    _section = NULL;
+  _section = NULL;
 }
 
 
 QString IniFile::getValueDef(QString _section, QString _var, QString _default){
   IniSection sec;
-  if(getSection(sec,_section,false)){
+  if(getSection(sec, QString(_section), false)){
     IniVar var;
-    if(sec.getVar(var,_var)){
-      return var.getValue();
-    } else
-      return _default;
-  } else
-    return _default;
-
+    if(sec.getVar(var, QString(_var))){
+      QString value = QString(var.getValue());
+      return value; // Return a copy of the value, not a reference
+    }
+  }
+  return QString(_default);
 }
 
 void IniFile::setComment(QString _comment){
@@ -313,7 +320,7 @@ void IniSection::setName(QString _name){
   name=_name;
 }
 
-QString IniSection::getName(){
+QString IniSection::getName() const {
   return name;
 }
 
@@ -325,7 +332,7 @@ void IniSection::addComment(QString _addcomment){
   comment.append(_addcomment);
 }
 
-QString IniSection::getComment(){
+QString IniSection::getComment() const {
   return comment;
 }
 
@@ -334,19 +341,37 @@ bool IniSection::operator== (IniSection& _section){
 }
 
 
-void IniSection::copy (IniSection& _section){
+void IniSection::copy(IniSection& _section){
   _section.setName(name);
   _section.setComment(comment);
-  _section.vars=vars; // Operator von Qt ueberladen
-  // Qt5: No need for setAutoDelete, we'll handle memory manually
+  
+  // Clear existing vars in the destination to prevent memory leaks
+  qDeleteAll(_section.vars);
+  _section.vars.clear();
+  
+  // Create a deep copy of each IniVar object
+  foreach(IniVar* var, vars) {
+    if (!var) continue; // Skip null pointers
+    IniVar* newVar = new IniVar(var->getName(), var->getValue(), var->getComment());
+    _section.vars.append(newVar);
+  }
 }
 
 
-bool IniSection::getVar( IniVar& _var, QString _name){
-  IniVar* tempvar;
-  foreach(IniVar* tempvar, vars) {
-    if (tempvar->getName()==_name){
-      tempvar->copy(_var);
+bool IniSection::getVar(IniVar& _var, QString _name){
+  // Initialize _var with empty values to ensure it's valid even if we don't find a match
+  _var.setName(QString());
+  _var.setValue(QString());
+  _var.setComment(QString());
+  
+  // Use a safe copy of the name to match
+  QString name_to_match = QString(_name);
+  
+  for(int i = 0; i < vars.size(); i++) {
+    IniVar* var = vars.at(i);
+    if (!var) continue; // Skip null pointers
+    if (var->getName() == name_to_match){
+      var->copy(_var);
       return true;
     }
   }
@@ -358,7 +383,7 @@ void IniSection::delVar(IniVar* _var)
 {
   vars.removeOne(_var);
   delete _var;  // manual deletion in Qt5
-     _var = NULL;
+  _var = NULL;
 }
 
 
@@ -371,47 +396,52 @@ void IniSection::addValue(QString name, QString value,QString comment)
 /////////////////////////////////////////////////////////////////////////////////////////
 // VAR
 IniVar::IniVar(){
+  // Initialize with empty values to avoid undefined behavior
+  name = QString();
+  value = QString();
+  comment = QString();
 }
 
-IniVar::IniVar( QString _name, QString _value, QString _comment){
-  setName(_name);
-  setValue(_value);
-  setComment(_comment);
+IniVar::IniVar(QString _name, QString _value, QString _comment){
+  // Ensure we get copies of the strings, not references
+  name = QString(_name);
+  value = QString(_value);
+  comment = QString(_comment);
 }
 
 IniVar::~IniVar(){
 }
 
 void IniVar::setName(QString _name){
-  name=_name;
+  name = QString(_name);
 }
 
-QString IniVar::getName(){
-  return name;
+QString IniVar::getName() const {
+  return QString(name);
 }
 
 void IniVar::setValue(QString _value){
-  value=_value;
+  value = QString(_value);
 }
 
-QString IniVar::getValue(){
-  return value;
+QString IniVar::getValue() const {
+  return QString(value);
 }
 
 void IniVar::setComment(QString _comment){
-  comment=_comment;
+  comment = QString(_comment);
 }
 
-QString IniVar::getComment(){
-  return comment;
+QString IniVar::getComment() const {
+  return QString(comment);
 }
 
 bool IniVar::operator== (IniVar& _var){
   return name==_var.getName();
 }
 
-void IniVar::copy (IniVar& _var){
-  _var.setName(name);
-  _var.setComment(comment);
-  _var.setValue(value);
+void IniVar::copy(IniVar& _var){
+  _var.setName(QString(name));
+  _var.setComment(QString(comment));
+  _var.setValue(QString(value));
 }

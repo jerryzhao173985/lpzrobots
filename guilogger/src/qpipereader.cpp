@@ -24,32 +24,148 @@
  ***************************************************************************/
 #include "qpipereader.h"
 #include <stdio.h>
-#include <unistd.h>  //for usleep
+#include <unistd.h>  // Keep for fileno()
 #include <stdlib.h>
+#include <QDebug>
+#include <QThread> // Keep for QThread::currentThread() if needed for debugging
+#include <QSocketNotifier>
+#include <errno.h>
+#include <string.h>
+#include <QTimer>
+#include <QCoreApplication>
 
-QPipeReader::QPipeReader(int delay, FILE* f) {
-  this->f = f;
-  this->delay = delay;// default parameter = 0
-}
-
-void QPipeReader::run() {
-  // one data element uses in the #C line (name) normally between 7 and 16 signs
-  // so at 16 signs per element the number of elements is limited to 4096, which is not
-  // sufficient for big and many matrices.
-  // allow up to 64MB usage of memory (*1024) instead of only 64KB, hence 4M elements are allowed (matrix: 2Kx2K)
-  int size = 65536 * 1024;
-  char *s = (char*) malloc(size * sizeof(char));
-
-  char* ctrl = s;
-  while (ctrl) {
-    
-    ctrl = fgets(s, size, f);
-    if (ctrl) {
-      emit newData(QString(s));
+QPipeReader::QPipeReader(int delay, FILE* f, QObject *parent) :
+    QObject(parent), f(f), notifier(nullptr), delay(delay)
+{
+    // qDebug() << "QPipeReader::QPipeReader - Constructor called in thread:" << QThread::currentThreadId();
+    if (!f) {
+        qCritical("QPipeReader: Invalid FILE pointer provided in constructor!");
     }
-    if (delay)
-      usleep(delay);
-  }
-  free(s);
+    
+    // Create a single-shot timer to defer notifier creation to event loop
+    QTimer::singleShot(0, this, &QPipeReader::initializeNotifier);
 }
+
+QPipeReader::~QPipeReader()
+{
+    // qDebug() << "QPipeReader: Destructor called";
+    // Delete notifier explicitly
+    if (notifier) {
+        notifier->setEnabled(false);
+        delete notifier;
+        notifier = nullptr;
+    }
+    
+    // Do not close stdin if f points to it
+    if (f != stdin && f != nullptr) {
+         // qDebug() << "QPipeReader: Closing provided file pointer";
+         fclose(f);
+         f = nullptr;
+    }
+}
+
+void QPipeReader::initializeNotifier()
+{
+    // This will now run in the event loop of the thread this object belongs to
+    // qDebug() << "QPipeReader::initializeNotifier - Creating socket notifier in thread:" << QThread::currentThreadId();
+
+    if (notifier) {
+        qWarning() << "QPipeReader::initializeNotifier - Notifier already initialized";
+        return;
+    }
+    
+    if (!f) {
+        qCritical("QPipeReader::initializeNotifier - Invalid FILE pointer!");
+        emit errorOccurred("Cannot initialize notifier: Invalid file pointer");
+        emit finished();
+        return;
+    }
+
+    int fd = fileno(f);
+    if (fd == -1) {
+        QString errorMsg = QString("QPipeReader: Failed to get file descriptor: %1").arg(strerror(errno));
+        qCritical() << errorMsg;
+        emit errorOccurred(errorMsg);
+        emit finished();
+        return;
+    }
+
+    // Safety check to ensure we're in a Qt thread
+    if (QThread::currentThread() != QCoreApplication::instance()->thread() &&
+        !qobject_cast<QThread*>(QThread::currentThread())) {
+        qCritical() << "QPipeReader::initializeNotifier - Must be called from a Qt thread! Current thread ID:" 
+                   << QThread::currentThreadId();
+        
+        // Try to recover by deferring to a safe context
+        QMetaObject::invokeMethod(this, "initializeNotifier", Qt::QueuedConnection);
+        return;
+    }
+    
+    // Create the notifier in the current thread
+    notifier = new QSocketNotifier(fd, QSocketNotifier::Read, this);
+    connect(notifier, &QSocketNotifier::activated, this, &QPipeReader::handleReadyRead, Qt::DirectConnection);
+    notifier->setEnabled(true);
+    // qDebug() << "QPipeReader::initializeNotifier - Notifier created and connected for fd:" << fd;
+}
+
+int QPipeReader::getFileno() const {
+    if (f) {
+        return fileno(f);
+    }
+    return -1;
+}
+
+void QPipeReader::handleReadyRead()
+{
+    if (!notifier || !f) {
+        qWarning("QPipeReader::handleReadyRead called with null notifier or file pointer");
+        return;
+    }
+    
+    // Temporarily disable notifier while reading to prevent reactivation
+    notifier->setEnabled(false);
+
+    // Buffer size increased to handle large data blocks but reduced from previous extreme size
+    const int bufferSize = 16384; // 16KB is usually sufficient for line-based data
+    char *s = (char*) malloc(bufferSize * sizeof(char));
+    if (!s) {
+        qWarning("QPipeReader: Failed to allocate read buffer");
+        emit errorOccurred("Failed to allocate read buffer");
+        notifier->setEnabled(true); // Re-enable notifier to try again later
+        return;
+    }
+
+    // Read the line
+    char* ctrl = fgets(s, bufferSize, f);
+
+    if (ctrl) {
+        // Successfully read a line
+        QString data = QString::fromUtf8(s);
+        emit newData(data.trimmed());
+        // Re-enable notifier for next line
+        notifier->setEnabled(true);
+    } else {
+        // Error or EOF
+        if (feof(f)) {
+            qDebug("QPipeReader: End of file reached");
+            emit finished();
+        } else if (ferror(f)) {
+            QString errorMsg = QString("QPipeReader: Error reading from pipe: %1").arg(strerror(errno));
+            qWarning() << errorMsg;
+            // Clear the error flag to allow future reads
+            clearerr(f);
+            emit errorOccurred(errorMsg);
+            notifier->setEnabled(true); // Re-enable notifier to try again later
+        } else {
+            // Re-enable notifier if no data was available but no error occurred
+            notifier->setEnabled(true);
+        }
+    }
+
+    free(s);
+}
+
+// Removed process() method
+// Removed stop() method
+
 
