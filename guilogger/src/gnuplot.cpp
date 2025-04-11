@@ -62,7 +62,7 @@ bool Gnuplot::open(const QString& gnuplotcmd, int w, int h, int x, int y){
 
   setlocale(LC_NUMERIC, "C"); // set us type output for numbers
 
-  qDebug() << "Gnuplot::open() - Starting process:" << gnuplotcmd << args;
+  // qDebug() << "Gnuplot::open() - Starting process:" << gnuplotcmd << args;
   process->start(gnuplotcmd, args);
 
   if (!process->waitForStarted(5000)) { // 5 sec timeout
@@ -85,10 +85,9 @@ void Gnuplot::tryTerminals(int w, int h, int x, int y) {
   // List of terminal types to try, in order of preference
   // Note: some gnuplot builds might only have certain terminals available
   QStringList terminals = {
-    "qt",     // Modern Qt terminal
     "wxt",    // wxWidgets terminal
     "x11",    // Classic X11 terminal
-    "qt",     // Try qt again in case the first attempt failed
+    "qt",     // Modern Qt terminal // sudo apt-get install gnuplot-qt qt5-default
     "dumb"    // Last resort - text mode
   };
   

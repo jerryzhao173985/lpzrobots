@@ -29,6 +29,10 @@ The changes made:
   - Fixed threading model
   - Better cleanup on exit
 
+Note: Current version of guilogger uses the wxt or x11 terminal. Qt terminal need to be installed with gnuplot to be used alternatively. (As the default gnuplot package often doesn't include the Qt terminal.)
+```
+sudo apt-get install gnuplot-qt qt5-default
+```
 A version of guilogger with extensive debug outputs is uploaded to the repository. (commented out before committing)
 
 ---

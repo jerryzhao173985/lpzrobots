@@ -1,3 +1,9 @@
 bin
 Makefile
 moc_*.cpp
+
+# Ignore any file starting with "moc_" in any directory
+**/moc_*
+
+# Optionally, ignore any files in a directory named "moc"
+**/moc/

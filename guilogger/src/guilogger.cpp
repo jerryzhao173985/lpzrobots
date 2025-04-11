@@ -506,7 +506,7 @@ void GuiLogger::load() {
     plotInfos.resize(plotwindows);
   }
 
-  qDebug() << "GuiLogger::load() - Loading window settings...";
+  // qDebug() << "GuiLogger::load() - Loading window settings...";
   // load window settings
   for(const auto* section : cfgFile.sections) {
     if(section->getName() == "Window"){
@@ -560,14 +560,14 @@ void GuiLogger::load() {
       }
     }
   }
-  qDebug() << "GuiLogger::load() - Window settings loaded.";
+  // qDebug() << "GuiLogger::load() - Window settings loaded.";
 
   // load and calculate positioning
   QString calcPositions = cfgFile.getValueDef("General","CalcPositions","yes");
   QString windowLayout = cfgFile.getValueDef("General","WindowLayout","blh");
   int windowsPerRowColumn = cfgFile.getValueDef("General","WindowsPerRowColumn","3").toInt();
   if(calcPositions.contains("yes")){
-    qDebug() << "GuiLogger::load() - Calculating window positions...";
+    // qDebug() << "GuiLogger::load() - Calculating window positions...";
     // arrange Gnuplot windows
     int xstart = windowLayout.contains("l") ? 0 : screenSize.width();
     int xinc   = windowLayout.contains("l") ? 1 : -1;
@@ -587,11 +587,11 @@ void GuiLogger::load() {
       }
       windowposition.insert(k,QSize(xinc > 0 ? xpos : xpos-s.width(),yinc > 0 ? ypos : ypos-s.height()));
     }
-    qDebug() << "GuiLogger::load() - Window positions calculated.";
+    // qDebug() << "GuiLogger::load() - Window positions calculated.";
   }
 
 
-  qDebug() << "GuiLogger::load() - Setting up Gnuplot instances (NO INIT YET)...";
+  // qDebug() << "GuiLogger::load() - Setting up Gnuplot instances (NO INIT YET)...";
   // --- Direct Gnuplot Instance Setup --- 
   qDebug() << "GuiLogger::load() - Deleting existing Gnuplot instances (if any). Size:" << plotWindows.size();
   qDeleteAll(plotWindows); // Delete existing instances
@@ -600,11 +600,11 @@ void GuiLogger::load() {
   plotWindows.resize(plotwindows);
 
   for (int i = 0; i < plotwindows; ++i) {
-      qDebug() << "GuiLogger::load() - Creating Gnuplot instance pointer for window" << i;
+      // qDebug() << "GuiLogger::load() - Creating Gnuplot instance pointer for window" << i;
       plotWindows[i] = new Gnuplot(plotInfos[i]); // Create directly
   }
   // ------------------------------------
-  qDebug() << "GuiLogger::load() - Gnuplot instance pointers setup complete.";
+  // qDebug() << "GuiLogger::load() - Gnuplot instance pointers setup complete.";
 
   // --- REMOVED gnuplot init and command sending from here --- 
 
@@ -675,7 +675,7 @@ void GuiLogger::plotUpdate(bool waitfordata, int window)
 
 // --- NEW SLOT --- 
 void GuiLogger::initializeGnuplotWindows() {
-    qDebug() << "GuiLogger::initializeGnuplotWindows() - START";
+    // qDebug() << "GuiLogger::initializeGnuplotWindows() - START";
 
     bool anyWindowInitialized = false;
     int initializedCount = 0;
@@ -694,7 +694,7 @@ void GuiLogger::initializeGnuplotWindows() {
           y = pos.height();
         }
         // Call init directly
-        qDebug() << "GuiLogger::initializeGnuplotWindows() - Calling init for window" << k << "Size:" << s << "Pos:" << x << y;
+        // qDebug() << "GuiLogger::initializeGnuplotWindows() - Calling init for window" << k << "Size:" << s << "Pos:" << x << y;
         if (plotWindows.at(k)->init(gnuplotcmd, s.width(), s.height(), x, y)) {
             anyWindowInitialized = true;
             initializedCount++;
@@ -728,7 +728,7 @@ void GuiLogger::initializeGnuplotWindows() {
         }
     }
 
-    qDebug() << "GuiLogger::initializeGnuplotWindows() - Sending initial Gnuplot commands...";
+    // qDebug() << "GuiLogger::initializeGnuplotWindows() - Sending initial Gnuplot commands...";
     // send gnuplot commands (after init)
     IniSection GNUplotsection;
     if(cfgFile.getSection(GNUplotsection,"GNUPlot",false)){
@@ -740,13 +740,13 @@ void GuiLogger::initializeGnuplotWindows() {
             for(int k=0; k<plotWindows.size(); ++k) {
                 if (!plotWindows.at(k)) continue; // Check instance exists
                 // Call command directly
-                qDebug() << "GuiLogger::initializeGnuplotWindows() - Sending initial command for window" << k << "Cmd:" << qv;
+                // qDebug() << "GuiLogger::initializeGnuplotWindows() - Sending initial command for window" << k << "Cmd:" << qv;
                 plotWindows.at(k)->command(qv);
             }
           }
         }
     }
-    qDebug() << "GuiLogger::initializeGnuplotWindows() - Initial Gnuplot commands sent.";
+    // qDebug() << "GuiLogger::initializeGnuplotWindows() - Initial Gnuplot commands sent.";
 
     // If in file mode, trigger initial plot update now
     if (mode == "file") {
@@ -761,5 +761,5 @@ void GuiLogger::initializeGnuplotWindows() {
             qWarning() << "GuiLogger::initializeGnuplotWindows() - Plot timer is null!";
         }
     }
-    qDebug() << "GuiLogger::initializeGnuplotWindows() - END";
+    // qDebug() << "GuiLogger::initializeGnuplotWindows() - END";
 }
