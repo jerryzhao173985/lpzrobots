@@ -75,8 +75,8 @@ bool Gnuplot::open(const QString& gnuplotcmd, int w, int h, int x, int y){
   
   // qDebug() << "Gnuplot::open() - Process started successfully. PID:" << process->processId();
   
-  // Try different terminal types in order of preference
-  tryTerminals(w, h, x, y);  // Pass window dimensions to tryTerminals
+  // // Try different terminal types in order of preference
+  // tryTerminals(w, h, x, y);  // Test: Pass window dimensions to tryTerminals
   
   return true;
 }
@@ -85,8 +85,8 @@ void Gnuplot::tryTerminals(int w, int h, int x, int y) {
   // List of terminal types to try, in order of preference
   // Note: some gnuplot builds might only have certain terminals available
   QStringList terminals = {
-    "wxt",    // wxWidgets terminal
     "x11",    // Classic X11 terminal
+    "wxt",    // wxWidgets terminal
     "qt",     // Modern Qt terminal // sudo apt-get install gnuplot-qt qt5-default
     "dumb"    // Last resort - text mode
   };

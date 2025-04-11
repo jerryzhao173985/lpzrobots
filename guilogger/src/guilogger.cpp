@@ -632,7 +632,7 @@ void GuiLogger::updateRootName(QString name) {
 
 
 void GuiLogger::plotChannelsChanged(int window){
-  qDebug() << "GuiLogger::plotChannelsChanged() for window:" << window;
+  // qDebug() << "GuiLogger::plotChannelsChanged() for window:" << window;
   if(mode=="file")
     updateSliderPlot();
   else
@@ -652,19 +652,19 @@ void GuiLogger::plotUpdate(bool waitfordata, int window)
   if(mode=="file") return;
 
   if(!waitfordata || channelData.getTime() - lastPlotTime > datadelayrate){
-    qDebug() << "GuiLogger::plotUpdate() - Updating plot windows. Window:" << window;
+    // qDebug() << "GuiLogger::plotUpdate() - Updating plot windows. Window:" << window;
     if(window==-1){
       // serial version
       for(int i=0; i<plotWindows.size(); i++) {
           if (plotWindows.at(i)) {
-             qDebug() << "GuiLogger::plotUpdate() - Calling plot() for window" << i;
+            //  qDebug() << "GuiLogger::plotUpdate() - Calling plot() for window" << i;
              // Pass filePlotHorizon as the history limit
              plotWindows.at(i)->plot(filePlotHorizon); 
           }
       }
     } else {
       if(window >=0 && window < plotWindows.size() && plotWindows.at(window)) {
-         qDebug() << "GuiLogger::plotUpdate() - Calling plot() for window" << window;
+        //  qDebug() << "GuiLogger::plotUpdate() - Calling plot() for window" << window;
          // Pass filePlotHorizon as the history limit
         plotWindows.at(window)->plot(filePlotHorizon);
       }
