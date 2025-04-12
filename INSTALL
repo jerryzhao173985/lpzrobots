@@ -3,6 +3,21 @@ sudo apt-get install g++ make automake libtool xutils-dev m4 libreadline-dev \
   qtbase5-dev qtdeclarative5-dev libqt5opengl5-dev qttools5-dev qttools5-dev-tools gnuplot gnuplot-x11 \
   libncurses5-dev libqt5serialport5-dev openjdk-8-jre openjdk-8-jdk
 
+
+To fixed the missing libode_dbl.so.1 library issue:
+
+simply do 
+
+```
+sudo ldconfig
+```
+
+or create a configuration file in /etc/ld.so.conf.d/ to tell the dynamic linker where to find the library and run sudo ldconfig to update the dynamic linker cache
+
+```
+sudo mv lpzrobots.conf /etc/ld.so.conf.d/ && sudo ldconfig
+```
+
 ---
 
 lpzrobots installation hints. Please check also the online documentation
